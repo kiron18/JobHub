@@ -1284,6 +1284,120 @@ export async function sendWelcomeResumeEmail(params: {
   await sendLogged('welcome_resume', { to, subject: email.subject, html, text, attachments, firstName: name || null });
 }
 
+/** Where an anonymous welcome session picks up again, for the two emails below. */
+export function welcomeResumeLink(token: string): string {
+  return `${PUBLIC_APP_URL}/?resume=${encodeURIComponent(token)}`;
+}
+
+/** The brief arrives as light markdown; an email paragraph wants plain sentences. */
+function plainParagraphs(markdown: string): string[] {
+  return (markdown || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/[*_#>`]+/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
+/**
+ * "Email me this diagnosis", from the welcome flow's diagnosis screen.
+ *
+ * Asked for by someone who is not ready to carry on yet, so it hands over what
+ * they were looking at and the way back to it, and nothing else. The link opens
+ * the same session, so the questions they already answered are still answered.
+ */
+export async function sendWelcomeDiagnosisEmail(params: {
+  to: string;
+  firstName?: string | null;
+  brief: string;
+  findingTitles: string[];
+  token: string;
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set, skipping welcome diagnosis email');
+    return false;
+  }
+  const name = (params.firstName || '').trim();
+  const email = {
+    subject: name ? `${name}, your resume diagnosis` : 'Your resume diagnosis',
+    blocks: [
+      { p: name ? `Hi ${name},` : 'Hi,' },
+      { p: "Here is what we found on your resume. It's saved for 24 hours, so you can pick up exactly where you left off." },
+      { strong: 'Your biggest gap' },
+      ...plainParagraphs(params.brief).map((p) => ({ p })),
+      ...(params.findingTitles.length
+        ? [{ strong: 'What we fix for you' }, { ul: params.findingTitles.slice(0, 8) }]
+        : []),
+      { p: 'A few quick taps and we rebuild it for you, free, before you create an account.' },
+      { cta: 'Fix my resume', url: welcomeResumeLink(params.token) },
+      { sign: ['Kiron', 'Aussie Grad Careers'] },
+    ],
+  };
+  const result = await sendLogged('welcome_diagnosis', {
+    to: params.to, subject: email.subject, html: renderHtml(email), text: renderText(email), firstName: name || null,
+  });
+  return !result.error;
+}
+
+/**
+ * "Finish on your laptop". Asked for on a phone by someone whose resume file is
+ * on another device, so it is a link home and the three places a resume usually
+ * hides, and nothing else.
+ */
+export async function sendWelcomeLaterEmail(params: { to: string }): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set, skipping welcome later email');
+    return;
+  }
+  const email = {
+    subject: 'Your link to fix your resume',
+    blocks: [
+      { p: 'Hi,' },
+      { p: "Here's the link you asked for. Open it on the computer that has your resume and upload it. You'll get your diagnosis in about a minute, free, no account needed." },
+      { cta: 'Upload my resume', url: `${PUBLIC_APP_URL}/?src=later` },
+      { p: "Can't find the file? It's usually in one of three places:" },
+      { ul: [
+        'Your sent email, attached to an application you sent before. Search "resume" or "CV".',
+        'LinkedIn: open your profile on a computer, click Resources (or More), then Save to PDF.',
+        'Seek: your profile keeps the resume you applied with, ready to download.',
+      ] },
+      { sign: ['Kiron', 'Aussie Grad Careers'] },
+    ],
+  };
+  await sendLogged('welcome_later', { to: params.to, subject: email.subject, html: renderHtml(email), text: renderText(email) });
+}
+
+/**
+ * The one reminder to someone who gave an address on the claim step and never
+ * finished making the account. They had already seen their rebuilt resume, so
+ * this is the closest-to-done person the front door ever loses.
+ */
+export async function sendWelcomeClaimReminderEmail(params: {
+  to: string;
+  firstName?: string | null;
+  token: string;
+}): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set, skipping welcome claim reminder');
+    return false;
+  }
+  const name = (params.firstName || '').trim();
+  const email = {
+    subject: 'Your rebuilt resume is still waiting',
+    blocks: [
+      { p: name ? `Hi ${name},` : 'Hi,' },
+      { p: "You rebuilt your resume with us earlier but didn't quite finish saving it." },
+      { p: "It's still there, with every answer you gave. One step left: set a password and we send you the PDF." },
+      { cta: 'Save my resume', url: welcomeResumeLink(params.token) },
+      { p: 'The link works for 24 hours from when you uploaded it. Any trouble, just reply to this email.' },
+      { sign: ['Kiron', 'Aussie Grad Careers'] },
+    ],
+  };
+  const result = await sendLogged('welcome_claim_reminder', {
+    to: params.to, subject: email.subject, html: renderHtml(email), text: renderText(email), firstName: name || null,
+  });
+  return !result.error;
+}
+
 /** The candidate's full name off the resume's own H1, for the filename. */
 function nameFromResumeMarkdown(markdown: string): string {
   const m = markdown.match(/^#\s+(.+)$/m);

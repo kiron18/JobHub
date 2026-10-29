@@ -1124,6 +1124,11 @@ model WelcomeSession {
   fullName           String?
   currentRole        String?
   brief              String?
+  // The rest of the diagnosis screen, so a session reopened from an email link
+  // shows what they saw the first time.
+  findings           Json?
+  strengths          Json?
+  targetRole         String?
   questions          Json?
   answers            Json?
   // What the raw file contains that text extraction drops (photo, images).
@@ -1140,11 +1145,20 @@ model WelcomeSession {
   // Rebuilds attempted on this session. /welcome/build is anonymous and costs an
   // LLM call, so it is capped per session rather than left open.
   buildCount         Int       @default(0)
+  // The address they gave before having an account: "Email me this diagnosis",
+  // or the claim step's Next before signup finished. Without it someone who
+  // walks away after seeing their resume is a visitor we can never reach again.
+  email              String?
+  emailCapturedAt    DateTime?
+  diagnosisEmailedAt DateTime?
+  // The one "your resume is still waiting" email. Set once, never re-sent.
+  claimReminderSentAt DateTime?
   claimedByUserId    String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@index([createdAt])
+  @@index([emailCapturedAt])
 }
 
 /// One person registering for a live group session.

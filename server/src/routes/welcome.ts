@@ -32,7 +32,7 @@ import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/a
 import { ipRateLimit } from '../middleware/ipRateLimit';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
-import { sendWelcomeResumeEmail } from '../services/email';
+import { sendWelcomeResumeEmail, sendWelcomeDiagnosisEmail, sendWelcomeLaterEmail } from '../services/email';
 import { renderResumePdf } from '../services/resumePdf';
 import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
 import { detectDocumentSignals, DocumentSignals } from '../services/documentSignals';
@@ -207,6 +207,10 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
       structure,
     );
     const token = randomUUID();
+    // What to AIM at, which is not the same as what they hold now. The read's own
+    // guess first (a casual retail job through uni is not where a data graduate is
+    // heading), then the old rule over their current title.
+    const suggestedTargetRole = targetRoleSeed(analysis.targetRole) || targetRoleSeed(analysis.currentRole);
 
     await prisma.welcomeSession.create({
       data: {
@@ -217,6 +221,9 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
         fullName: analysis.fullName || null,
         currentRole: analysis.currentRole || null,
         brief: analysis.brief,
+        findings: analysis.findings as any,
+        strengths: analysis.strengths as any,
+        targetRole: suggestedTargetRole || null,
         questions: analysis.questions as any,
         signals: signals as any,
         mustKeep: analysis.mustKeep as any,
@@ -236,9 +243,8 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
       resumeEmail: emailFromResume(text),
       firstName: analysis.firstName,
       currentRole: analysis.currentRole,
-      // What to AIM at, which is not the same as what they hold now. The box on
-      // the client is seeded from this, never from currentRole. See targetRoleSeed.
-      suggestedTargetRole: targetRoleSeed(analysis.currentRole),
+      // The box on the client is seeded from this, never from currentRole. See targetRoleSeed.
+      suggestedTargetRole,
       brief: analysis.brief,
       findings: analysis.findings,
       strengths: analysis.strengths,
@@ -246,7 +252,17 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
     });
   } catch (err) {
     console.error('[welcome/brief]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
-    captureFunnel(req, funnelId(req), 'resume_upload_failed', { reason: 'analysis_error', duration_ms: Date.now() - startedAt });
+    // The error's class and status ride along: "analysis_error" alone could not
+    // tell a provider outage from a database refusal, and the logs are gone by the
+    // time anyone looks. No message text, which can quote the resume.
+    const e = err as { name?: string; code?: string; response?: { status?: number } };
+    captureFunnel(req, funnelId(req), 'resume_upload_failed', {
+      reason: 'analysis_error',
+      duration_ms: Date.now() - startedAt,
+      error_name: e?.name || undefined,
+      error_code: e?.code || undefined,
+      upstream_status: e?.response?.status || undefined,
+    });
     res.status(502).json({ error: 'Could not read your resume, please try again.' });
   }
 });
@@ -397,6 +413,110 @@ router.post('/build', async (req: Request, res: Response) => {
     console.error('[welcome/build]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
     buildFailed('error');
     res.status(502).json({ error: 'Could not build your resume, please try again.' });
+  }
+});
+
+// ── POST /api/welcome/capture ────────────────────────────────────────────────
+// An address, before there is an account. Two ways in: "Email me this
+// diagnosis" (send it now) and the claim step's Next, saved before signup is
+// even tried so a failed or abandoned signup still leaves us a way to reach them.
+// The reminder for the second lives in cron/welcomeRecoveryCron.ts. No IP
+// limit: that one is the upload budget, and a send needs an upload behind it.
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+router.post('/capture', async (req: Request, res: Response) => {
+  try {
+    const { token, email, reason } = req.body || {};
+    const addr = typeof email === 'string' ? email.trim().toLowerCase().slice(0, 254) : '';
+    if (!EMAIL_RE.test(addr)) { res.status(400).json({ error: 'Enter a valid email address.' }); return; }
+
+    const session = await loadSession(token);
+    if (!session) { res.status(410).json({ error: 'Your session expired, please upload your resume again.' }); return; }
+    if (session.claimedByUserId) { res.json({ ok: true }); return; }
+
+    const wantsDiagnosis = reason === 'diagnosis';
+    await prisma.welcomeSession.update({
+      where: { id: session.id },
+      data: { email: addr, emailCapturedAt: session.emailCapturedAt ?? new Date() },
+    });
+    captureFunnel(req, funnelId(req, session.token), 'welcome_email_captured', { reason: wantsDiagnosis ? 'diagnosis' : 'claim' });
+
+    // Once per session. A second press is them checking it worked, not asking twice.
+    if (wantsDiagnosis && !session.diagnosisEmailedAt) {
+      const findings = (session.findings as unknown as Array<{ title?: string; owner?: string }> | null) ?? [];
+      const sent = await sendWelcomeDiagnosisEmail({
+        to: addr,
+        firstName: session.firstName,
+        brief: session.brief ?? '',
+        findingTitles: findings.filter((f) => f.owner === 'we_fix' && f.title).map((f) => String(f.title)),
+        token: session.token,
+      });
+      if (!sent) { res.status(502).json({ error: 'Could not send that, please try again.' }); return; }
+      await prisma.welcomeSession.update({ where: { id: session.id }, data: { diagnosisEmailedAt: new Date() } });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[welcome/capture]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not send that, please try again.' });
+  }
+});
+
+// ── POST /api/welcome/later ──────────────────────────────────────────────────
+// "Finish on your laptop", from the front door, for someone whose resume is not
+// on the device in their hand. No session exists yet, so this is only an address
+// and a link home. One per address a day: it is a form anyone can type into.
+router.post('/later', async (req: Request, res: Response) => {
+  try {
+    const addr = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : '';
+    if (!EMAIL_RE.test(addr)) { res.status(400).json({ error: 'Enter a valid email address.' }); return; }
+
+    const recent = await prisma.emailSend.findFirst({
+      where: {
+        toEmail: addr,
+        template: { name: 'welcome_later' },
+        sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      select: { id: true },
+    });
+    captureFunnel(req, funnelId(req), 'welcome_email_captured', { reason: 'later', repeat: !!recent });
+    if (!recent) await sendWelcomeLaterEmail({ to: addr });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[welcome/later]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not send that, please try again.' });
+  }
+});
+
+// ── GET /api/welcome/session/:token ──────────────────────────────────────────
+// Reopens a session from an email link: the diagnosis, their answers so far, and
+// the rebuilt resume if they got that far. The token is the credential, exactly
+// as it is for /build and /resume.
+router.get('/session/:token', async (req: Request, res: Response) => {
+  try {
+    const session = await loadSession(req.params.token);
+    if (!session) { res.status(410).json({ error: 'That link has expired. Upload your resume again and it takes two minutes.' }); return; }
+    if (session.claimedByUserId) { res.status(409).json({ error: 'This resume is already saved to an account. Log in to see it.' }); return; }
+    const answers = ((session.answers as unknown as IntakeAnswer[] | null) ?? [])
+      .reduce<Record<string, { status: string; value: string }>>((acc, a) => {
+        acc[a.questionId] = { status: a.status, value: a.value };
+        return acc;
+      }, {});
+    res.json({
+      token: session.token,
+      firstName: session.firstName,
+      resumeEmail: emailFromResume(session.resumeOriginalText),
+      email: session.email,
+      suggestedTargetRole: session.targetRole || targetRoleSeed(session.currentRole),
+      brief: session.brief,
+      findings: session.findings ?? [],
+      strengths: session.strengths ?? [],
+      questions: session.questions ?? [],
+      answers,
+      resume: session.resumeCleanText,
+    });
+  } catch (err) {
+    console.error('[welcome/session]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not reopen your resume, please try again.' });
   }
 });
 

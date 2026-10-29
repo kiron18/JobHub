@@ -55,6 +55,7 @@ import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startLifecycleCron } from './cron/lifecycleCron';
+import { startWelcomeRecoveryCron } from './cron/welcomeRecoveryCron';
 import { startWorkshopReminderCron } from './cron/workshopReminderCron';
 import { startGapReportCron } from './cron/gapReportCron';
 import { startAccountabilityCron } from './cron/accountabilityCron';
@@ -411,7 +412,14 @@ async function ensureColumns() {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "WelcomeSession"
         ADD COLUMN IF NOT EXISTS "resumeEditedAt" TIMESTAMP(3),
-        ADD COLUMN IF NOT EXISTS "fullName" TEXT;
+        ADD COLUMN IF NOT EXISTS "fullName" TEXT,
+        ADD COLUMN IF NOT EXISTS "findings" JSONB,
+        ADD COLUMN IF NOT EXISTS "strengths" JSONB,
+        ADD COLUMN IF NOT EXISTS "targetRole" TEXT,
+        ADD COLUMN IF NOT EXISTS "email" TEXT,
+        ADD COLUMN IF NOT EXISTS "emailCapturedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "diagnosisEmailedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "claimReminderSentAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SponsorLead" (
@@ -524,6 +532,7 @@ if (process.env.SKIP_SERVER === 'true') {
       startTrialChallengeReminderCron();
       startCoachCheckinCron();
       startSalesMeetingReminderCron();
+      startWelcomeRecoveryCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');

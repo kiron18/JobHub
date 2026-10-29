@@ -281,6 +281,11 @@ export function trackLoginClicked(position: string) {
   posthog.capture('login_clicked', { position });
 }
 
+/** "Don't have your resume on this device?" opened on the front door. */
+export function trackNoResumeOpened() {
+  posthog.capture('no_resume_help_opened');
+}
+
 /** "Find out how" under the upload box. */
 export function trackHowItWorksClicked() {
   posthog.capture('how_it_works_clicked');

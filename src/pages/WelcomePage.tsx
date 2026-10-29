@@ -14,6 +14,7 @@ import {
   trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted, trackResumeQuestionStarted, trackResumeQuestionCompleted, trackEmailSubmitted,
   funnelIds, trackEmailOutcome, welcomeFailureReason, trackUploadPickerOpened, trackResumeFileSelected, trackLoginClicked,
   trackHowItWorksClicked, trackHowItWorksViewed, trackHowItWorksStartClicked, trackChallengeTickerClicked,
+  trackNoResumeOpened,
 } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
@@ -106,6 +107,25 @@ interface IntakeQuestion {
 }
 
 type AnswerStatus = 'answered' | 'later' | 'unknown';
+
+/** The shape axios rejects with, as far as these screens read it. */
+type ApiError = { response?: { status?: number; data?: { error?: string } } };
+
+/** /welcome/brief, and /welcome/session/:token reopening one. */
+interface BriefPayload {
+  token: string;
+  resumeEmail?: string | null;
+  email?: string | null;
+  firstName?: string | null;
+  currentRole?: string | null;
+  suggestedTargetRole?: string | null;
+  brief?: string | null;
+  findings?: IntakeFinding[];
+  strengths?: string[];
+  questions?: IntakeQuestion[];
+  answers?: Answers;
+  resume?: string | null;
+}
 type Answers = Record<string, { status: AnswerStatus; value: string }>;
 
 export const WelcomePage: React.FC = () => {
@@ -126,6 +146,32 @@ export const WelcomePage: React.FC = () => {
   // without being tracked — this funnel ran blind until 2026-08-07 and the
   // whole point is that it stays measured.
   useEffect(() => { trackWelcomeStep(step); }, [step]);
+
+  /*
+    Back from an email link (the diagnosis email, or the claim reminder). The
+    session still holds the diagnosis, their answers and the rebuilt resume, so
+    they land where they left off instead of being asked to upload again.
+  */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resumeToken = params.get('resume');
+    if (!resumeToken) return;
+    params.delete('resume');
+    const rest = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''));
+    setStep('loading');
+    api.get(`/welcome/session/${encodeURIComponent(resumeToken)}`).then(({ data }) => {
+      applyBrief(data);
+      if (data.answers && typeof data.answers === 'object') setAnswers(data.answers);
+      if (data.resume) { setCleanResume(data.resume); setStep('resume'); }
+      else setStep('brief');
+    }).catch((err: ApiError) => {
+      toast.error(err?.response?.data?.error || 'That link has expired. Upload your resume again.');
+      setStep('upload');
+    });
+    // Once, on arrival. applyBrief only writes state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Whether the explainer under the upload box is read at all. Once per visit.
   const howItWorksSeen = useRef(false);
@@ -168,10 +214,10 @@ export const WelcomePage: React.FC = () => {
 
   const [findings, setFindings] = useState<IntakeFinding[]>([]);
   const [strengths, setStrengths] = useState<string[]>([]);
-  // Which diagnosis card is expanded. One at a time, and the row arrives
-  // closed: three shut tiles read as a short menu, where one already-open panel
-  // reads as a wall of text with two afterthoughts beside it.
-  const [openCard, setOpenCard] = useState<DiagnosisCardId | null>(null);
+  // Which diagnosis card is expanded. One at a time. The biggest gap arrives
+  // open: the diagnosis is the moment of trust, and three shut tiles made the
+  // payoff screen look empty until somebody thought to click.
+  const [openCard, setOpenCard] = useState<DiagnosisCardId | null>('gap');
   const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
   // Which question is open for answering on the diagnosis screen, and what has
@@ -262,34 +308,53 @@ export const WelcomePage: React.FC = () => {
     return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
   }
 
+  /** The diagnosis payload, from a fresh upload or from a session reopened by an email link. */
+  function applyBrief(data: BriefPayload) {
+    setToken(data.token);
+    // The address on their own resume. Pre-fills the field at the end, and is
+    // what we compare against if they type something different.
+    setResumeEmail(typeof data.resumeEmail === 'string' ? data.resumeEmail : '');
+    const known = data.email || data.resumeEmail;
+    if (known && !email) setEmail(known);
+    setFirstName(data.firstName || '');
+    setBrief(data.brief || '');
+    setFindings(Array.isArray(data.findings) ? data.findings : []);
+    setStrengths(Array.isArray(data.strengths) ? data.strengths : []);
+    setQuestions(Array.isArray(data.questions) ? data.questions : []);
+    // Seeded from suggestedTargetRole, not currentRole: the target is where
+    // they are going, and a current title like "Data Analyst (Intern)" would
+    // otherwise aim the whole rebuild at another internship.
+    const seed = data.suggestedTargetRole || data.currentRole;
+    if (seed) setRoles([seed]);
+  }
+
   async function uploadResume(f: File) {
     setStep('loading');
-    try {
+    const send = () => {
       const fd = new FormData();
       // Ahead of the file, so the server has them even when it rejects the file.
       const ids = funnelIds();
       if (ids.ph_id) fd.append('ph_id', ids.ph_id);
       fd.append('vid', ids.vid);
       fd.append('resume', f);
-      const { data } = await api.post('/welcome/brief', fd, {
+      return api.post('/welcome/brief', fd, {
         timeout: 180000,
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setToken(data.token);
-      // The address on their own resume. Pre-fills the field at the end, and is
-      // what we compare against if they type something different.
-      setResumeEmail(typeof data.resumeEmail === 'string' ? data.resumeEmail : '');
-      if (data.resumeEmail && !email) setEmail(data.resumeEmail);
-      setFirstName(data.firstName || '');
-      setBrief(data.brief || '');
-      setFindings(Array.isArray(data.findings) ? data.findings : []);
-      setStrengths(Array.isArray(data.strengths) ? data.strengths : []);
-      setQuestions(Array.isArray(data.questions) ? data.questions : []);
-      // Seeded from suggestedTargetRole, not currentRole: the target is where
-      // they are going, and a current title like "Data Analyst (Intern)" would
-      // otherwise aim the whole rebuild at another internship.
-      const seed = data.suggestedTargetRole || data.currentRole;
-      if (seed) setRoles([seed]);
+    };
+    try {
+      let res;
+      try {
+        res = await send();
+      } catch (first) {
+        // A 5xx or a dropped connection is the read failing, which a second go
+        // usually gets past without the person ever knowing. A 4xx is about the
+        // file itself, so that one is said straight away.
+        const status = (first as ApiError)?.response?.status;
+        if (status && status < 500) throw first;
+        res = await send();
+      }
+      applyBrief(res.data);
       setStep('brief');
     } catch (err: any) {
       trackWelcomeFailed('loading', welcomeFailureReason(err?.response?.status));
@@ -343,19 +408,35 @@ export const WelcomePage: React.FC = () => {
     setAnswers(next);
     setInlineDraft('');
     trackResumeQuestionCompleted(questions.indexOf(q), q.id, q.kind, questionElapsedMs(q.id), false, true);
-    const following = questions.find(x => !next[x.id]);
-    setOpenQ(following?.id ?? null);
-    if (following) { setInlineDraft(next[following.id]?.value ?? ''); startQuestionTimer(following, questions.indexOf(following)); }
+    advanceFrom(q, next);
   }
 
   /** Save an answer given on the diagnosis screen, without leaving it. */
   function saveInline(q: IntakeQuestion, value: string) {
     const v = value.trim();
     if (!v) return;
-    setAnswers(prev => ({ ...prev, [q.id]: { status: 'answered', value: v } }));
-    setOpenQ(null);
+    const next: Answers = { ...answers, [q.id]: { status: 'answered', value: v } };
+    setAnswers(next);
     setInlineDraft('');
     trackResumeQuestionCompleted(questions.indexOf(q), q.id, q.kind, questionElapsedMs(q.id), q.ranges.includes(v), false);
+    // Straight on to the next one, so eight questions feel like eight taps
+    // rather than eight hunts for the next Fix button.
+    advanceFrom(q, next);
+  }
+
+  /** Open the next unanswered question after `q`, wrapping round to any earlier one still open. */
+  function advanceFrom(q: IntakeQuestion, given: Answers) {
+    const after = questions.slice(questions.indexOf(q) + 1).find(x => !given[x.id])
+      ?? questions.find(x => !given[x.id]);
+    setOpenQ(after?.id ?? null);
+    if (after) {
+      setInlineDraft(given[after.id]?.value ?? '');
+      startQuestionTimer(after, questions.indexOf(after));
+    }
+    window.setTimeout(() => {
+      const target = document.getElementById(after ? `welcome-q-${after.id}` : 'welcome-fix-cta');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
   }
 
   // Roles are asked after the questions, immediately before the rebuild, because
@@ -469,6 +550,9 @@ export const WelcomePage: React.FC = () => {
     if (password.length < PASSWORD_MIN) { toast.error(`Your password needs at least ${PASSWORD_MIN} characters.`); return; }
 
     trackEmailSubmitted(addr);
+    // Saved before signup is tried, so a signup that fails or is abandoned here
+    // still leaves a way to send them the resume they just saw. Never blocks.
+    if (token) void api.post('/welcome/capture', { token, email: addr, reason: 'claim', ...funnelIds() }).catch(() => {});
     setSending(true);
     /*
      * Raised BEFORE the credentials go up, because the window it covers opens
@@ -727,7 +811,32 @@ export const WelcomePage: React.FC = () => {
                 } as React.CSSProperties}
               >
                 <div className="diag-panel-body">
-                {openCard === 'gap' && <BriefProse text={brief} />}
+                {openCard === 'gap' && (
+                  <>
+                    <BriefProse text={brief} />
+                    {/* The way out, said where the problem is read. Without it the
+                        gap is a verdict; with it, it is the first step of a fix. */}
+                    <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => startQuestions()}
+                        style={{
+                          cursor: 'pointer', padding: '11px 18px', borderRadius: 12, border: 'none',
+                          background: colors.accentPetrol, color: '#fff',
+                          fontFamily: T.body, fontSize: 14.5, fontWeight: 700,
+                          display: 'inline-flex', alignItems: 'center', gap: 7,
+                        }}
+                      >
+                        Here's how we fix it <ArrowRight size={16} />
+                      </button>
+                      <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+                        {outstandingQs > 0
+                          ? `${outstandingQs} quick ${outstandingQs === 1 ? 'question' : 'questions'}, mostly one tap each.`
+                          : 'Nothing more we need from you.'}
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 {openCard === 'found' && (
                   <>
@@ -772,9 +881,11 @@ export const WelcomePage: React.FC = () => {
                 {openCard === 'need' && (
                   questions.length > 0 ? (
                     <div id="welcome-questions" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <p style={{ fontFamily: T.body, fontSize: 16, lineHeight: 1.55, color: colors.textPrimary, margin: '0 0 10px' }}>
-                        Your current resume lacks clarity. Answer what you can below and we fix the
-                        gaps that are costing you interviews.
+                      <p style={{ fontFamily: T.body, fontSize: 16, lineHeight: 1.55, color: colors.textPrimary, margin: '0 0 4px' }}>
+                        Tap an answer and we move you to the next one. Not sure? Skip it.
+                      </p>
+                      <p style={{ fontFamily: T.body, fontSize: 13, fontWeight: 700, color: colors.accentPetrol, margin: '0 0 10px' }}>
+                        {questions.length - outstandingQs} of {questions.length} done
                       </p>
 
                       {/*
@@ -861,7 +972,7 @@ export const WelcomePage: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+        <div id="welcome-fix-cta" style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
           <motion.button
             className="agc-cta-pulse"
             onClick={() => startQuestions()}
@@ -876,6 +987,8 @@ export const WelcomePage: React.FC = () => {
               : 'Next: your target roles.'}
           </span>
         </div>
+
+        <EmailDiagnosis token={token} defaultEmail={email || resumeEmail} />
 
         <style>{`
           @keyframes agcCtaPulse {
@@ -990,8 +1103,8 @@ export const WelcomePage: React.FC = () => {
       <Shell>
         <Eyebrow>Almost there</Eyebrow>
         <Display>Building your resume.</Display>
-        <p style={bodyText}>Cleaning the formatting, leading with your outcomes, and working in everything you just told us. This takes up to a minute.</p>
-        <CyclingStatus lines={BUILDING_LINES} />
+        <p style={bodyText}>Cleaning the formatting, leading with your outcomes, and working in everything you just told us. This usually takes about 30 seconds.</p>
+        <CyclingStatus lines={BUILDING_LINES} expectedMs={BUILDING_EXPECTED_MS} />
       </Shell>
     );
   }
@@ -1585,7 +1698,7 @@ export const WelcomePage: React.FC = () => {
         {step === 'loading' ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ marginTop: 8 }}>
-            <CyclingStatus lines={READING_LINES} align="center" />
+            <CyclingStatus lines={READING_LINES} align="center" expectedMs={READING_EXPECTED_MS} />
           </motion.div>
         ) : (
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1623,12 +1736,19 @@ export const WelcomePage: React.FC = () => {
                   {file ? file.name : dragging ? 'Drop it here' : 'Upload your resume'}
                 </span>
                 <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, color: colors.textMuted, marginTop: 7 }}>
-                  Drag it in, or click to browse. PDF or Word, up to 5MB.
+                  {isMobile ? 'Tap to choose the file. PDF or Word, up to 5MB.' : 'Drag it in, or click to browse. PDF or Word, up to 5MB.'}
                 </span>
               </span>
             </button>
             <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0] ?? null; setFile(f); if (f) { trackResumeFileSelected('browse', f); uploadResume(f); } }} />
+            {/* The risk, removed in one line. All three are true until the claim
+                step: nothing is charged, the read takes about a minute, and no
+                account exists until they choose to save the result. */}
+            <p style={{ margin: '10px 0 0', textAlign: 'center', fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+              {isMobile ? 'Free · About a minute · No account needed' : 'Free · Your diagnosis in about a minute · No account needed'}
+            </p>
+            {!file && <NoResumeHelp tight={isMobile} />}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1643,9 +1763,7 @@ export const WelcomePage: React.FC = () => {
           they are about to be given, before they have been given it. The
           argument now lives where it costs nothing, on the rebuilt resume and
           the fit check. */}
-      <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: isMobile ? 15 : 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: isMobile ? '16px auto 0' : '22px auto 0' }}>
-        High quality applications consistently personalised to every job.
-      </p>
+      {step === 'upload' && <HowItWorksStrip tight={isMobile} />}
       <p style={{ margin: isMobile ? '12px 0 0' : '14px 0 0', textAlign: 'center' }}>
         <a
           href={`#${HOW_IT_WORKS_ID}`}
@@ -1669,6 +1787,272 @@ export const WelcomePage: React.FC = () => {
 };
 
 // ── Small shared building blocks (kept local to this page) ─────────────────────
+
+/**
+ * "Not ready now? Email me this diagnosis."
+ *
+ * The one place someone who is interested but not ready to carry on can leave
+ * us an address. Before this, anyone who closed the tab before the claim step
+ * was gone for good. Quiet on purpose: the button above is still the way on.
+ */
+function EmailDiagnosis({ token, defaultEmail }: { token: string; defaultEmail: string }) {
+  const [open, setOpen] = useState(false);
+  // Null until they type, so an address that arrives after mount (a restored
+  // session) still fills the box.
+  const [typed, setAddr] = useState<string | null>(null);
+  const addr = typed ?? defaultEmail;
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  async function send() {
+    const v = addr.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast.error('Enter a valid email address.'); return; }
+    setState('sending');
+    try {
+      await api.post('/welcome/capture', { token, email: v, reason: 'diagnosis', ...funnelIds() });
+      setState('sent');
+    } catch (err) {
+      setState('idle');
+      toast.error((err as ApiError)?.response?.data?.error || 'Could not send that, please try again.');
+    }
+  }
+
+  if (!token) return null;
+  const linkBtn: React.CSSProperties = {
+    background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer',
+    fontFamily: T.body, fontSize: 13.5, color: colors.textMuted,
+    textDecoration: 'underline', textUnderlineOffset: 3,
+  };
+  return (
+    <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      {state === 'sent' ? (
+        <p style={{ margin: 0, fontFamily: T.body, fontSize: 13.5, color: colors.success, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, textAlign: 'center' }}>
+          <Check size={15} strokeWidth={3} /> Sent to {addr.trim().toLowerCase()}. The link brings you back right here.
+        </p>
+      ) : !open ? (
+        <button type="button" onClick={() => setOpen(true)} style={linkBtn}>
+          Not ready now? Email me this diagnosis
+        </button>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 420 }}>
+          <input
+            type="email" inputMode="email" autoComplete="email" autoFocus
+            value={addr}
+            onChange={e => setAddr(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && state === 'idle') void send(); }}
+            placeholder="you@email.com"
+            style={inputStyle}
+          />
+          <button
+            type="button"
+            onClick={() => void send()}
+            disabled={state === 'sending'}
+            style={{
+              flexShrink: 0, cursor: 'pointer', padding: '0 18px', borderRadius: 12,
+              border: `1px solid ${colors.accentPetrol}`, background: 'transparent',
+              color: colors.accentPetrol, fontFamily: T.body, fontSize: 14, fontWeight: 700,
+            }}
+          >
+            {state === 'sending' ? <Loader2 size={15} className="animate-spin" /> : 'Send'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The three steps, as one line of pictures rather than a paragraph. A stranger
+ * on the front door has no idea what "the system" is; this is the whole of it,
+ * and the trial line says what it costs to find out.
+ */
+function HowItWorksStrip({ tight }: { tight?: boolean }) {
+  const steps = ['Fix your resume', 'Set your profile', 'Send quality applications, consistently'];
+  return (
+    <div style={{ marginTop: tight ? 16 : 22, textAlign: 'center' }}>
+      <ol style={{
+        listStyle: 'none', margin: 0, padding: 0,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: tight ? 6 : 10,
+      }}>
+        {steps.map((label, i) => (
+          <React.Fragment key={label}>
+            {i > 0 && <ArrowRight size={tight ? 13 : 15} aria-hidden style={{ flexShrink: 0, marginTop: tight ? 4 : 5, color: colors.textMuted }} />}
+            <li style={{ flex: '1 1 0', maxWidth: 170, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <span style={{
+                width: tight ? 22 : 26, height: tight ? 22 : 26, borderRadius: '50%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: i === 0 ? colors.accentPetrol : colors.bgAlt,
+                color: i === 0 ? '#fff' : colors.accentPetrol,
+                border: `1px solid ${colors.accentPetrol}`,
+                fontFamily: T.body, fontSize: tight ? 11.5 : 12.5, fontWeight: 700,
+              }}>{i + 1}</span>
+              <span style={{ fontFamily: T.body, fontSize: tight ? 12 : 13, lineHeight: 1.35, fontWeight: 600, color: colors.textSecondary }}>
+                {label}
+              </span>
+            </li>
+          </React.Fragment>
+        ))}
+      </ol>
+      <p style={{ margin: tight ? '10px 0 0' : '14px 0 0', fontFamily: T.body, fontSize: tight ? 12.5 : 13.5, color: colors.textMuted }}>
+        <strong style={{ color: colors.textPrimary }}>Free 7-day trial.</strong> Have your resume ready to get started.
+      </p>
+    </div>
+  );
+}
+
+/** Gmail's own search, for a resume they have emailed or been sent before. */
+const GMAIL_RESUME_SEARCH = 'https://mail.google.com/mail/u/0/#search/has%3Aattachment+(resume+OR+cv)';
+
+/**
+ * "Don't have your resume on this device?"
+ *
+ * Most phone visitors are not without a resume, they are without the FILE on
+ * that phone. It almost always lives somewhere they can reach: an email they
+ * sent an application from, their LinkedIn profile, their Seek profile. Each
+ * option here is a place to go and get it, plus the one way out that does not
+ * need it at all, which is a link to finish on the laptop. One link on the
+ * front door, so it never competes with the upload box.
+ */
+function NoResumeHelp({ tight }: { tight?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [addr, setAddr] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  async function sendLink() {
+    const v = addr.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast.error('Enter a valid email address.'); return; }
+    setState('sending');
+    try {
+      await api.post('/welcome/later', { email: v, ...funnelIds() });
+      setState('sent');
+    } catch (err) {
+      setState('idle');
+      toast.error((err as ApiError)?.response?.data?.error || 'Could not send that, please try again.');
+    }
+  }
+
+  const row: React.CSSProperties = {
+    display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
+    padding: '12px 14px', borderRadius: 12, background: colors.bgAlt,
+    border: `1px solid ${colors.borderWhisper}`,
+  };
+  const num: React.CSSProperties = {
+    flexShrink: 0, width: 22, height: 22, borderRadius: '50%', marginTop: 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
+    fontFamily: T.body, fontSize: 11.5, fontWeight: 700, color: colors.accentPetrol,
+  };
+  const head: React.CSSProperties = { display: 'block', fontFamily: T.body, fontSize: 14, fontWeight: 700, color: colors.textPrimary };
+  const body: React.CSSProperties = { display: 'block', marginTop: 3, fontFamily: T.body, fontSize: 13, lineHeight: 1.5, color: colors.textSecondary };
+  const link: React.CSSProperties = { color: colors.accentPetrol, fontWeight: 700, textUnderlineOffset: 3 };
+
+  // On a phone the file is usually on the laptop, so that way out leads there.
+  const options: Array<[string, (n: number) => React.ReactNode]> = [
+    ['email', (n) => (
+                  <div style={row}>
+                    <span style={num}>{n}</span>
+                    <span>
+                      <span style={head}>Find it in your email</span>
+                      <span style={body}>
+                        If you've ever applied for a job by email, it's in your sent mail.{' '}
+                        <a href={GMAIL_RESUME_SEARCH} target="_blank" rel="noreferrer" style={link}>Search my Gmail</a>
+                        {' '}or search "resume" in your mail app, open the attachment, save it, then come back and upload it.
+                      </span>
+                    </span>
+                  </div>
+    )],
+    ['linkedin', (n) => (
+                  <div style={row}>
+                    <span style={num}>{n}</span>
+                    <span>
+                      <span style={head}>Download your LinkedIn profile</span>
+                      <span style={body}>
+                        On a computer, open your LinkedIn profile, click <strong>Resources</strong> (or <strong>More</strong>) under your name,
+                        then <strong>Save to PDF</strong>. Upload that file here and we build your resume from it.
+                      </span>
+                    </span>
+                  </div>
+    )],
+    ['seek', (n) => (
+                  <div style={row}>
+                    <span style={num}>{n}</span>
+                    <span>
+                      <span style={head}>Get it from Seek</span>
+                      <span style={body}>
+                        If you've applied on Seek, your resume is saved in your{' '}
+                        <a href="https://www.seek.com.au/profile/me" target="_blank" rel="noreferrer" style={link}>Seek profile</a>.
+                        {' '}Open it there and download it.
+                      </span>
+                    </span>
+                  </div>
+    )],
+    ['laptop', (n) => (
+                  <div style={row}>
+                    <span style={num}>{n}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={head}>Finish on your laptop</span>
+                      {state === 'sent' ? (
+                        <span style={{ ...body, color: colors.success, fontWeight: 600 }}>Sent. Open it on the computer that has your resume.</span>
+                      ) : (
+                        <>
+                          <span style={body}>We email you a link. Open it wherever your resume is.</span>
+                          <span style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <input
+                              type="email" inputMode="email" autoComplete="email"
+                              value={addr}
+                              onChange={e => setAddr(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter' && state === 'idle') void sendLink(); }}
+                              placeholder="you@email.com"
+                              style={{ ...inputStyle, padding: '10px 12px', fontSize: 14 }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void sendLink()}
+                              disabled={state === 'sending'}
+                              style={{
+                                flexShrink: 0, cursor: 'pointer', padding: '0 14px', borderRadius: 12, border: 'none',
+                                background: colors.accentPetrol, color: '#fff', fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+                              }}
+                            >
+                              {state === 'sending' ? <Loader2 size={14} className="animate-spin" /> : 'Send link'}
+                            </button>
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+    )],
+  ];
+  if (tight) options.unshift(options.pop()!);
+
+  return (
+    <div style={{ marginTop: tight ? 10 : 12, textAlign: 'center' }}>
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); if (!open) trackNoResumeOpened(); }}
+        aria-expanded={open}
+        style={{ ...quietLinkStyle, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      >
+        Don't have your resume on this device?
+        <ChevronDown size={14} aria-hidden style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ height: { duration: 0.26, ease: EASE }, opacity: { duration: 0.18 } }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              {options.map(([key, render], i) => <React.Fragment key={key}>{render(i + 1)}</React.Fragment>)}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /**
  * The stroke on the front door's panel and dropzone. A step darker than
@@ -1773,6 +2157,14 @@ const BUILDING_LINES = [
  */
 const STATUS_LINE_MS = 4200;
 
+/*
+  How long each wait usually takes, from the server's own duration_ms on
+  resume_uploaded and resume_built (PostHog, Aug to Oct 2026). The read ran 40
+  to 130 seconds with most near 50; the rebuild 13 to 35.
+*/
+const READING_EXPECTED_MS = 60_000;
+const BUILDING_EXPECTED_MS = 30_000;
+
 /**
  * One line at a time out of a fixed list, with the spinner beside it.
  *
@@ -1780,10 +2172,12 @@ const STATUS_LINE_MS = 4200;
  * a different length swaps in, and a jumping page looks broken in exactly the
  * moment we are trying to look busy.
  */
-function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS }: {
+function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS, expectedMs }: {
   lines: readonly string[];
   align?: 'left' | 'center';
   intervalMs?: number;
+  /** Typical length of this wait. When set, a bar and a "time left" line show under the status. */
+  expectedMs?: number;
 }) {
   const [i, setI] = useState(0);
 
@@ -1824,7 +2218,7 @@ function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS }: {
     </AnimatePresence>
   );
 
-  return (
+  const row = (
     <div style={{
       display: 'flex',
       flexDirection: centred ? 'column' : 'row',
@@ -1846,6 +2240,51 @@ function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS }: {
         style={{ color: colors.accentPetrol, flexShrink: 0 }}
       />
       {label}
+    </div>
+  );
+
+  if (!expectedMs) return row;
+  return (
+    <div>
+      {row}
+      <WaitProgress expectedMs={expectedMs} align={align} />
+    </div>
+  );
+}
+
+/**
+ * A bar and a countdown under a long wait, so a minute of nothing reads as a
+ * minute of work rather than a page that died.
+ *
+ * The bar never reaches the end on its own: it eases toward 95% so a slow run
+ * slows the bar down instead of parking it full while nothing happens. The
+ * countdown is honest about the same thing, and once the typical time has
+ * passed it says so rather than counting into negative numbers.
+ */
+function WaitProgress({ expectedMs, align }: { expectedMs: number; align: 'left' | 'center' }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = window.setInterval(() => setElapsed(Date.now() - start), 250);
+    return () => window.clearInterval(id);
+  }, []);
+  // 1 - e^(-t/tau) with tau = expected/2 is ~86% at the expected time.
+  const pct = Math.min(95, 100 * (1 - Math.exp(-elapsed / (expectedMs / 2))));
+  const left = Math.ceil((expectedMs - elapsed) / 1000);
+  const note = left > 60 ? `About ${Math.ceil(left / 60)} minutes left`
+    : left > 5 ? `About ${left} seconds left`
+    : 'Nearly there. Some resumes take a little longer, so keep this tab open.';
+  return (
+    <div style={{ marginTop: 16, maxWidth: 360, marginLeft: align === 'center' ? 'auto' : 0, marginRight: align === 'center' ? 'auto' : 0 }}>
+      <div
+        role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}
+        style={{ height: 6, borderRadius: 99, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`, overflow: 'hidden' }}
+      >
+        <div style={{ height: '100%', width: `${pct}%`, background: colors.accentPetrol, borderRadius: 99, transition: 'width .25s linear' }} />
+      </div>
+      <p style={{ margin: '8px 0 0', fontFamily: T.body, fontSize: 12.5, color: colors.textMuted, textAlign: align === 'center' ? 'center' : 'left' }}>
+        {note}
+      </p>
     </div>
   );
 }
@@ -2112,7 +2551,7 @@ function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave,
   const skipped = !!answer && answer.status !== 'answered';
 
   return (
-    <div style={{
+    <div id={`welcome-q-${question.id}`} style={{
       borderRadius: 12,
       border: `1px solid ${open ? colors.accentPetrol : colors.borderDefined}`,
       background: colors.bgSurface,

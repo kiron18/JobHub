@@ -76,6 +76,8 @@ export interface IntakeAnalysis {
   /** Full name exactly as the resume gives it, for CandidateProfile.name — not just the greeting-copy first name above. */
   fullName: string;
   currentRole: string;
+  /** Where they are heading, which a casual job held through uni is usually not. Seeds the target-role box. */
+  targetRole: string;
   brief: string;
   findings: IntakeFinding[];
   /**
@@ -184,6 +186,7 @@ Return ONLY this JSON object and nothing else:
   "firstName": "their first name, or an empty string if unclear",
   "fullName": "their full name exactly as the resume header gives it, or an empty string if unclear",
   "currentRole": "their current or most recent job title exactly as the resume gives it, or an empty string if unclear",
+  "targetRole": "the job title they are most plausibly aiming for next, judged from their degree, their most relevant experience and any objective they state, not from a casual or part-time job held while studying. A plain market title such as Data Analyst, no seniority words, or an empty string if unclear",
   "brief": "flowing prose spoken to them, no bullets or headings or scores, 320 to 380 words. Open on the biggest problem and give it real room: what their document currently says, what the person hiring reads into that, and what it has been costing them. Quote their own resume back at them where it makes the point land. They should finish that paragraph seeing something about their own resume they could not see themselves. Then the second problem, then a third only if there is a real third, each shorter than the one before. Explained as understanding, never as verdict. End by telling them you need a few facts before you rewrite it. Use \n\n between paragraphs.",
   "findings": [{
     "title": "short label, at most 6 words",
@@ -367,6 +370,7 @@ export async function analyseIntakeResume(
       firstName: String(parsed?.firstName ?? '').trim(),
       fullName: String(parsed?.fullName ?? '').trim(),
       currentRole: String(parsed?.currentRole ?? '').trim(),
+      targetRole: String(parsed?.targetRole ?? '').trim().slice(0, 80),
       brief,
       findings: normaliseFindings(parsed?.findings),
       strengths: Array.isArray(parsed?.strengths)
