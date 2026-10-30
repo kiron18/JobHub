@@ -2141,11 +2141,19 @@ function TrackStep({
 function NextJobCard({ textareaRef, highlight }: { textareaRef: React.RefObject<HTMLTextAreaElement | null>; highlight: boolean }) {
     const navigate = useNavigate();
     const [ad, setAd] = useState('');
+    const queryClient = useQueryClient();
     const { data: goal } = useQuery({
         queryKey: ['tracker-goal'],
         queryFn: async () => (await api.get<{ goal: number; applied: number }>('/tracker/goal')).data,
         staleTime: 30_000,
     });
+    // "I've sent it" ticks at once and saves in the background, so the count
+    // read before the save lands is one short. Read it again once it is in.
+    useEffect(() => {
+        if (!highlight) return;
+        const t = setTimeout(() => queryClient.invalidateQueries({ queryKey: ['tracker-goal'] }), 2500);
+        return () => clearTimeout(t);
+    }, [highlight, queryClient]);
     const ready = ad.trim().length >= 100;
     const applied = goal?.applied ?? 0;
     const target = goal?.goal ?? 0;

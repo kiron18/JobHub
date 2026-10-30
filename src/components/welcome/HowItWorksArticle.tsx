@@ -237,7 +237,7 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
         .hiw-rail-card {
           flex: 0 0 auto; width: 150px; border-radius: 10px; overflow: hidden;
           border: 1px solid ${colors.borderDefined}; background: #fff;
-          box-shadow: 0 1px 2px rgba(26,24,20,0.05), 0 8px 18px -14px rgba(26,24,20,0.35);
+          box-shadow: 0 1px 2px rgba(16, 24, 40,0.05), 0 8px 18px -14px rgba(16, 24, 40,0.35);
         }
         @media (min-width: 860px) {
           .hiw-rail { grid-template-columns: 1fr 240px; gap: 36px; }
@@ -251,16 +251,16 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
           flex: 1 1 160px; max-width: 210px; min-width: 150px;
           background: #fff; border: 1px solid ${colors.borderDefined}; border-radius: 14px;
           padding: 16px 15px; display: flex; flex-direction: column; gap: 4px;
-          box-shadow: 0 1px 2px rgba(26,24,20,0.05), 0 12px 22px -16px rgba(26,24,20,0.35);
+          box-shadow: 0 1px 2px rgba(16, 24, 40,0.05), 0 12px 22px -16px rgba(16, 24, 40,0.35);
           transform: translateY(var(--lift)) rotate(var(--tilt));
           transition: transform .2s ease, box-shadow .2s ease;
         }
         @media (hover: hover) {
-          .hiw-map-card:hover { transform: translateY(calc(var(--lift) - 4px)) rotate(0deg); box-shadow: 0 4px 8px rgba(26,24,20,0.06), 0 18px 32px -16px rgba(26,24,20,0.4); }
+          .hiw-map-card:hover { transform: translateY(calc(var(--lift) - 4px)) rotate(0deg); box-shadow: 0 4px 8px rgba(16, 24, 40,0.06), 0 18px 32px -16px rgba(16, 24, 40,0.4); }
         }
         .hiw-map-num {
           width: 26px; height: 26px; border-radius: 99px; display: grid; place-items: center;
-          background: rgba(45,90,110,0.08); color: ${colors.accentPetrol};
+          background: rgba(18,87,196,0.08); color: ${colors.accentPetrol};
           font-family: ${T.body}; font-size: 11.5px; font-weight: 700; margin-bottom: 4px;
         }
         .hiw-map-title { font-family: ${T.body}; font-size: 15px; font-weight: 600; color: ${colors.textPrimary}; line-height: 1.3; }
@@ -388,7 +388,7 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
               borderRadius: 12, border: 'none', cursor: 'pointer',
               ...ACTION,
               fontFamily: T.body, fontSize: 16, fontWeight: 600,
-              boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+              boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 4px 14px rgba(18,87,196,0.18)',
               transition: 'background .18s ease',
             }}
           >

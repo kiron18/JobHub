@@ -92,7 +92,7 @@ export function LandingFooter() {
               color: colors.textMuted,
             }}
           >
-            &copy; 2026 JobHub · Made in Australia
+            &copy; 2026 Aussie Grad Careers · Made in Australia
           </span>
         </div>
       </div>

@@ -112,7 +112,7 @@ export const AuthPage: React.FC = () => {
             margin: '0 0 8px', letterSpacing: '-0.02em',
             fontFamily: warm.type.fontBody,
           }}>
-            Sign in to JobHub
+            Sign in to Aussie Grad Careers
           </h1>
           <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
             {isSignup ? 'Create a new account' : 'Welcome back'}

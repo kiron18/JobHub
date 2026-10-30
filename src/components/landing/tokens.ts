@@ -2,35 +2,40 @@
    Scoped to landing. Do not import into in-app surfaces.        */
 
 export const colors = {
-  bgCanvas: '#FAF7F2' as const,
+  /* Repointed at the app palette (warmTokens) on 30 Oct 2026, so the front
+     door, the diagnosis, the questions, the claim step and pricing read as the
+     same product as the app behind them. The names stay so nothing else has to
+     change; the old cream, brown and petrol values are gone. Gold is the next
+     step only (warmTokens ACTION), so the gold here is the dark warning gold. */
+  bgCanvas: '#EDF1F6' as const,
   bgSurface: '#FFFFFF' as const,
-  bgAlt: '#F4EFE8' as const,
-  bgDeep: '#2A2520' as const,
+  bgAlt: '#F5F7FA' as const,
+  bgDeep: '#0F2038' as const,
 
-  textPrimary: '#1A1814' as const,
+  textPrimary: '#111827' as const,
   /* Long-form reading ink. A shade off textPrimary, because a paragraph of
-     serif set at near-black hits the eye harder than a heading does — the
-     stems are thinner and there are far more of them. Headings stay on
-     textPrimary; only prose someone actually reads through uses this. */
-  textInk: '#26221C' as const,
-  textSecondary: '#5C5750' as const,
-  textMuted: '#8B847B' as const,
-  textOnDeep: '#FAF7F2' as const,
+     serif set at near-black hits the eye harder than a heading does. */
+  textInk: '#1F2937' as const,
+  textSecondary: '#48566B' as const,
+  textMuted: '#6D7A8C' as const,
+  textOnDeep: '#FFFFFF' as const,
 
-  borderWhisper: 'rgba(26, 24, 20, 0.08)' as const,
-  borderDefined: 'rgba(26, 24, 20, 0.16)' as const,
+  borderWhisper: '#E6EAF0' as const,
+  borderDefined: '#CFD6E0' as const,
 
-  accentPetrol: '#2D5A6E' as const,
-  accentPetrolHover: '#1F4253' as const,
-  accentPetrolPressed: '#15323F' as const,
-  accentGold: '#C5A059' as const,
-  accentGoldSoft: '#E8D7B0' as const,
+  /* The app's blue: links, selection, outline buttons. Never a fill for the
+     next step; that is gold. */
+  accentPetrol: '#1257C4' as const,
+  accentPetrolHover: '#0E47A1' as const,
+  accentPetrolPressed: '#0B3A85' as const,
+  accentGold: '#A9760D' as const,
+  accentGoldSoft: '#FBF1DC' as const,
 
   /* Highlighter pen, for the one line in a block that carries the cost. */
-  highlight: '#F7EBBF' as const,
+  highlight: '#FDF0C4' as const,
 
-  success: '#2A9D6F' as const,
-  ringFocus: 'rgba(45, 90, 110, 0.40)' as const,
+  success: '#12805C' as const,
+  ringFocus: 'rgba(18, 87, 196, 0.32)' as const,
 } as const;
 
 export const type = {

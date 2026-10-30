@@ -357,7 +357,7 @@ export default function ClassroomPage() {
                 fontSize: 15, fontWeight: 600, background: C.blue, color: '#fff',
               }}
             >
-              Open JobHub <ArrowRight size={16} />
+              Open Aussie Grad Careers <ArrowRight size={16} />
             </Link>
           </main>
         ) : mod && (

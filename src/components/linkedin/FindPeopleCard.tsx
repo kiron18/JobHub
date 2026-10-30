@@ -28,10 +28,10 @@ export function FindPeopleCard({ targetRole, targetCity }: { targetRole?: string
       background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
     }}>
       <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Search size={16} style={{ color: warm.colors.accentPetrol }} /> Find people to message
+        <Search size={16} style={{ color: warm.colors.accentPetrol }} /> Step 1: find someone to message
       </p>
       <p style={{ margin: '0 0 12px', fontSize: 13, lineHeight: 1.55, color: warm.colors.textSecondary }}>
-        Opens LinkedIn with the search already filled in from your profile. Pick five, then write to them below.
+        Opens LinkedIn with the search already filled in from your profile. Pick one, then tell us who below.
       </p>
       <div style={{ display: 'grid', gap: 8 }}>
         {searches.map(s => (

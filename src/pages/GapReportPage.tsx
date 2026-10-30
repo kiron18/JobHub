@@ -127,7 +127,7 @@ export default function GapReportPage() {
   const sec: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
   const card: React.CSSProperties = {
     background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
-    borderRadius: 14, boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 10px 32px rgba(26,24,20,0.055)',
+    borderRadius: 14, boxShadow: '0 1px 2px rgba(16, 24, 40,0.05), 0 10px 32px rgba(16, 24, 40,0.055)',
   };
 
   if (state === 'loading') {
@@ -220,7 +220,7 @@ export default function GapReportPage() {
         <section style={{
           background: colors.bgDeep, color: colors.textOnDeep, borderRadius: 16,
           padding: 'clamp(26px, 5vw, 40px)', display: 'flex', flexDirection: 'column', gap: 18,
-          boxShadow: '0 2px 4px rgba(26,24,20,0.07), 0 18px 50px rgba(26,24,20,0.10)',
+          boxShadow: '0 2px 4px rgba(16, 24, 40,0.07), 0 18px 50px rgba(16, 24, 40,0.10)',
         }}>
           <p style={{ ...eyebrow, color: 'rgba(250,247,242,0.55)' }}>What your resume actually does</p>
           <h1 style={{
@@ -318,7 +318,7 @@ export default function GapReportPage() {
               </h2>
             </div>
             <div style={{
-              background: 'rgba(45,90,110,0.07)', border: `1px solid ${colors.borderWhisper}`,
+              background: 'rgba(18,87,196,0.07)', border: `1px solid ${colors.borderWhisper}`,
               borderRadius: 14, padding: 'clamp(22px, 4vw, 30px)',
               display: 'flex', flexDirection: 'column', gap: 14,
             }}>
@@ -348,7 +348,7 @@ export default function GapReportPage() {
 
             <div style={{
               ...card, borderColor: colors.borderDefined, borderRadius: 16, overflow: 'hidden',
-              boxShadow: '0 2px 4px rgba(26,24,20,0.07), 0 18px 50px rgba(26,24,20,0.10)',
+              boxShadow: '0 2px 4px rgba(16, 24, 40,0.07), 0 18px 50px rgba(16, 24, 40,0.10)',
             }}>
               <div style={{ padding: 'clamp(20px, 4vw, 28px)', display: 'flex', flexDirection: 'column', gap: 11 }}>
                 <p style={beatLabel(colors.textMuted)}>What you wrote</p>
@@ -462,7 +462,7 @@ export default function GapReportPage() {
         <section style={{
           border: `1.5px solid ${colors.accentGold}`, borderRadius: 18, overflow: 'hidden',
           background: colors.bgSurface,
-          boxShadow: '0 2px 4px rgba(26,24,20,0.07), 0 18px 50px rgba(26,24,20,0.10)',
+          boxShadow: '0 2px 4px rgba(16, 24, 40,0.07), 0 18px 50px rgba(16, 24, 40,0.10)',
         }}>
           <div style={{
             background: 'rgba(197,160,89,0.13)', padding: 'clamp(22px, 4vw, 30px)',
@@ -543,7 +543,7 @@ export default function GapReportPage() {
                 background: colors.accentPetrol, color: colors.textOnDeep,
                 padding: '17px 28px', borderRadius: 12, textDecoration: 'none',
                 fontWeight: 650, fontSize: '1.0625rem',
-                boxShadow: '0 2px 6px rgba(45,90,110,0.22), 0 10px 26px rgba(45,90,110,0.20)',
+                boxShadow: '0 2px 6px rgba(18,87,196,0.22), 0 10px 26px rgba(18,87,196,0.20)',
               }}
             >
               Start the rebuild

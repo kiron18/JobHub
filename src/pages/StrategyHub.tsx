@@ -670,8 +670,11 @@ interface JobLite {
     status: string;
 }
 
-function PipelineGlance({ jobs }: { jobs: JobLite[] }) {
-    if (!jobs?.length) {
+function PipelineGlance({ jobs }: { jobs: JobLite[] | undefined }) {
+    // Still loading: say nothing rather than "No applications yet", which is
+    // what showed for a few seconds after every application on a slow line.
+    if (!jobs) return null;
+    if (!jobs.length) {
         return (
             <NavLink
                 to="/tracker"
@@ -802,7 +805,7 @@ export function StrategyHub() {
                     </DimPeer>
                 )}
                 <DimPeer>
-                    <PipelineGlance jobs={jobs ?? []} />
+                    <PipelineGlance jobs={jobs} />
                 </DimPeer>
             </DimRegion>
         </div>

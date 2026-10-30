@@ -69,16 +69,16 @@ function BookButton({ position, label, small, onClick }: { position: 'hero' | 'm
         fontWeight: 600, fontSize: small ? '0.9375rem' : '1.0625rem', fontFamily: typeTokens.body,
         letterSpacing: '-0.005em', cursor: 'pointer', lineHeight: 1, whiteSpace: 'nowrap',
         display: 'inline-flex', alignItems: 'center', gap: 9,
-        boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+        boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 4px 14px rgba(18,87,196,0.18)',
         transition: 'transform 180ms cubic-bezier(0.25,1,0.5,1), box-shadow 180ms cubic-bezier(0.25,1,0.5,1)',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-1px)';
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(26,24,20,0.06), 0 8px 24px rgba(45,90,110,0.22)';
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(16, 24, 40,0.06), 0 8px 24px rgba(18,87,196,0.22)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)';
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(16, 24, 40,0.06), 0 4px 14px rgba(18,87,196,0.18)';
       }}
     >
       {label} <ArrowRight size={small ? 16 : 18} strokeWidth={2.2} />
@@ -138,7 +138,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(26,24,20,0.72)', backdropFilter: 'blur(4px)',
+          background: 'rgba(16, 24, 40,0.72)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
         }}
       >
@@ -151,7 +151,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
           style={{
             background: colors.bgCanvas, borderRadius: 16, padding: '32px 28px',
             width: '100%', maxWidth: 520, maxHeight: '90dvh', overflowY: 'auto',
-            boxShadow: '0 8px 40px rgba(26,24,20,0.22)',
+            boxShadow: '0 8px 40px rgba(16, 24, 40,0.22)',
             border: `1px solid ${colors.borderWhisper}`,
           }}
         >
@@ -386,7 +386,7 @@ export function BookCallPage() {
                 <Reveal key={s.title} delay={i * 0.08}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10, background: 'rgba(45,90,110,0.08)',
+                      width: 40, height: 40, borderRadius: 10, background: 'rgba(18,87,196,0.08)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <Icon size={20} color={colors.accentPetrol} strokeWidth={2} />

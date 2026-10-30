@@ -241,7 +241,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             >
                 <img
                     src="/Logo.svg"
-                    alt="JobReady"
+                    alt="Aussie Grad Careers"
                     className="w-10 h-10 rounded-xl flex-shrink-0 object-contain"
                 />
                 <AnimatePresence>
@@ -251,10 +251,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -8 }}
                             transition={{ duration: 0.15 }}
-                            className="text-xl font-bold tracking-tight whitespace-nowrap"
-                            style={{ color: warmT.text }}
+                            className="font-bold tracking-tight whitespace-nowrap"
+                            // One product name everywhere (30 Oct 2026). Smaller than
+                            // text-xl so the longer name fits the 240px sidebar.
+                            style={{ color: warmT.text, fontSize: 16.5 }}
                         >
-                            JobReady
+                            Aussie Grad Careers
                         </motion.h1>
                     )}
                 </AnimatePresence>
@@ -540,7 +542,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             className="font-bold tracking-tight"
                             style={{ color: warmT.text, fontSize: 16 }}
                         >
-                            JobReady
+                            Aussie Grad Careers
                         </span>
                     </Link>
                 </header>

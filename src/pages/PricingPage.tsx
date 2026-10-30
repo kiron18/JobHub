@@ -188,12 +188,13 @@ export function PricingPage() {
                descenders of the line above at 1.05. */
             lineHeight: 1.16,
             letterSpacing: '-0.025em',
-            margin: '0 0 40px',
+            margin: '0 0 18px',
             maxWidth: 760,
             fontVariationSettings: "'SOFT' 50, 'WONK' 1",
           }}
         >
-          Land your dream job in Australia{' '}
+          {/* Kiron's copy, 30 Oct 2026: headline, subheadline, then the price. */}
+          Join the challenge that{' '}
           <span
             style={{
               background: colors.highlight,
@@ -202,21 +203,27 @@ export function PricingPage() {
               padding: '0 clamp(4px, 1.5vw, 6px)',
             }}
           >
-            using a systematic, data-backed process.
+            lands you your first Australian job!
           </span>
         </h1>
 
-        <PrimaryCTA label={user ? CTA_LABEL : STRANGER_CTA_LABEL} onClick={startCheckout} />
+        <p style={{ fontSize: 'clamp(1rem, 2.4vw, 1.1875rem)', lineHeight: 1.55, color: colors.textSecondary, margin: '0 0 26px', maxWidth: 620 }}>
+          Use the most sophisticated AI powered engine that puts you in charge and allows you to send high quality
+          applications consistently. Stand out with personalised follow ups and outreach with just a click of a button.
+        </p>
 
-        <p style={{ fontSize: '1.0625rem', fontWeight: 600, color: colors.textPrimary, margin: '22px 0 0' }}>
+        <p style={{ fontSize: '1.0625rem', fontWeight: 600, color: colors.textPrimary, margin: '0 0 22px' }}>
           {PRICE} a month for 3 months ({TOTAL} in total). Then access for the rest of the year, included.
         </p>
+
+        <PrimaryCTA label={user ? CTA_LABEL : STRANGER_CTA_LABEL} onClick={startCheckout} />
+
         <p
           style={{
             fontSize: '0.8125rem',
             color: colors.textMuted,
             lineHeight: 1.6,
-            margin: '8px 0 0',
+            margin: '14px 0 0',
             maxWidth: 440,
           }}
         >
@@ -253,7 +260,7 @@ export function PricingPage() {
                   display: 'block',
                   borderRadius: 12,
                   border: `1px solid ${colors.borderDefined}`,
-                  boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 14px 30px -20px rgba(26,24,20,0.45)',
+                  boxShadow: '0 1px 2px rgba(16, 24, 40,0.05), 0 14px 30px -20px rgba(16, 24, 40,0.45)',
                 }}
               />
             </a>

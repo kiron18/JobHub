@@ -341,7 +341,11 @@ export const ApplicationTracker: React.FC = () => {
                             <span style={{ minWidth: 0 }}>{stat.label}</span>
                         </p>
                         <p style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                            <span style={{ fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', fontWeight: 800, color: stat.color as string, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</span>
+                            <span style={{ fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', fontWeight: 800, color: stat.color as string, fontVariantNumeric: 'tabular-nums' }}>
+                                {/* A dash while the list loads, never a 0: a zero
+                                    here read as "your applications are gone". */}
+                                {isLoading ? '–' : stat.value}
+                            </span>
                             {stat.rate && <span style={{ fontSize: 10, color: warm.colors.textMuted, fontWeight: 700 }}>{stat.rate}</span>}
                         </p>
                     </div>
@@ -391,7 +395,7 @@ export const ApplicationTracker: React.FC = () => {
                                 borderRadius: 18,
                                 display: 'flex', flexDirection: 'column', gap: 12,
                             }}>
-                                <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Track an application from outside JobHub</p>
+                                <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Track an application sent elsewhere</p>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="sm:grid-cols-2">
                                     <div>
                                         <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Job Title *</label>

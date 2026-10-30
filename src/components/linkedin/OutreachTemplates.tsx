@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
+import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck, ArrowRight, Send } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { NetworkingGuide } from './NetworkingGuide';
 import { OutreachDueNudges } from './OutreachTracker';
 import type { OutreachData } from './types';
@@ -200,6 +201,43 @@ export const OutreachTemplates: React.FC = () => {
   const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '', reContactDraft: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  // Whether they have copied the connection note yet: the step between
+  // "write it" and "I've sent it".
+  const [noteCopied, setNoteCopied] = useState(false);
+
+  /*
+    The outreach loop (30 Oct 2026), the same shape as applying: one gold
+    button in a bar at the bottom, and it is always the next thing to do.
+      write  -> "Write my message"        (fill in who, then generate)
+      copy   -> "Copy the connection note"
+      send   -> "I've sent the request"   (logs it, counts toward today)
+      next   -> "Next person"             (clears the form for the next one)
+  */
+  const formReady = !!(targetFirstName && targetCompany && targetTopicOrPost);
+  const stage: 'write' | 'copy' | 'send' | 'next' = !outreach ? 'write'
+    : loggedThisGen ? 'next' : noteCopied ? 'send' : 'copy';
+  const queryClient = useQueryClient();
+  const { data: goals } = useQuery({
+    queryKey: ['tracker-goals'],
+    queryFn: async () => (await api.get('/tracker/goals')).data as { outreach: { goal: number; done: number } },
+    staleTime: 30_000,
+  });
+
+  async function copyNote() {
+    const note = draftsRef.current.connectionNote || outreach?.connectionNote || '';
+    try { await navigator.clipboard.writeText(note); } catch { /* the card's own Copy still works */ }
+    setNoteCopied(true);
+    toast.success('Copied. Paste it into your LinkedIn connection request, then come back and tick it off.');
+  }
+
+  function nextPerson() {
+    setTargetFirstName(''); setTargetCompany(''); setTargetTopicOrPost(''); setSpecificQuestion('');
+    setOutreach(null); setLoggedThisGen(false); setOutreachLogId(null); setNoteCopied(false);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 350);
+  }
 
   // Jump to the drafts once they land. The form sits below the walkthrough and
   // the playbook, so on a laptop the results render well below the fold and it
@@ -248,6 +286,11 @@ export const OutreachTemplates: React.FC = () => {
       setOutreachLogId(data.entry.id);
       setLoggedThisGen(true);
       setNextTouchNumber(2);
+      // Count it at once: the goals read takes a few seconds, and the bar
+      // should tick the moment they say they sent it. The refetch confirms it.
+      queryClient.setQueryData(['tracker-goals'], (g: any) => g?.outreach ? { ...g, outreach: { ...g.outreach, done: g.outreach.done + 1 } } : g);
+      queryClient.invalidateQueries({ queryKey: ['tracker-goals'] });
+      queryClient.invalidateQueries({ queryKey: ['tracker-goal'] });
       toast.success(`Saved: ${targetFirstName} at ${targetCompany}`);
     } catch {
       toast.error('Could not save this outreach. Try again.');
@@ -280,6 +323,7 @@ export const OutreachTemplates: React.FC = () => {
         reContactDraft: data.reContact ?? '',
       };
       setGenId(g => g + 1);
+      setNoteCopied(false);
       setLoggedThisGen(false);
       setOutreachLogId(null);
       setNextTouchNumber(2);
@@ -316,19 +360,23 @@ export const OutreachTemplates: React.FC = () => {
         times in three voices, and between them they filled the screen above
         the tool people came here to use.
       */}
-      <WarmContactsCard />
 
-      <NetworkingGuide />
-
-      {/* Input form */}
-      <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, marginBottom: 16 }}>
-          About the person you want to reach
+      {/* Input form: the one card on this tab the eye should land on. */}
+      <div ref={formRef} style={{
+        background: warm.colors.bgSurface, borderRadius: 18, padding: 24, marginBottom: 20, scrollMarginTop: 16,
+        border: `2px solid ${stage === 'write' ? warm.colors.action : warm.colors.borderWhisper}`,
+        boxShadow: stage === 'write' ? warm.shadow.focus : warm.shadow.card,
+      }}>
+        <p style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', color: warm.colors.textPrimary, margin: '0 0 4px' }}>
+          Who are you reaching out to?
+        </p>
+        <p style={{ fontSize: 13.5, color: warm.colors.textMuted, margin: '0 0 16px' }}>
+          Found someone above? Three details and we write the whole sequence.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
             <label htmlFor="outFirstName" style={labelStyle}>First Name</label>
-            <input id="outFirstName" value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle} />
+            <input id="outFirstName" ref={nameRef} value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle} />
           </div>
           <div>
             <label htmlFor="outCompany" style={labelStyle}>Company</label>
@@ -374,19 +422,17 @@ export const OutreachTemplates: React.FC = () => {
         </div>
 
         <button
+          className="agc-action"
           onClick={handleGenerate}
-          disabled={!targetFirstName || !targetCompany || !targetTopicOrPost || generating}
+          disabled={!formReady || generating}
           style={{
-            width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-            background: !targetFirstName || !targetCompany || !targetTopicOrPost || generating
-              ? 'rgba(10,102,194,0.3)' : warm.colors.accentPetrol,
-            color: 'white', fontWeight: 700, fontSize: 14,
-            cursor: (!targetFirstName || !targetCompany || !targetTopicOrPost || generating) ? 'default' : 'pointer',
+            width: '100%', padding: '14px 0', minHeight: 50, borderRadius: 12,
+            ...ACTION, border: 'none', fontWeight: 700, fontSize: 15.5,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
           {generating && <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
-          {generating ? 'Generating templates…' : 'Generate Outreach Templates'}
+          {generating ? 'Writing your messages…' : 'Write my message'}
         </button>
       </div>
 
@@ -444,15 +490,15 @@ export const OutreachTemplates: React.FC = () => {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                 padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: `1px solid ${loggedThisGen ? warm.colors.success : 'rgba(10,102,194,0.4)'}`,
-                background: loggedThisGen ? 'rgba(52,211,153,0.1)' : warm.colors.accentPetrol,
-                color: loggedThisGen ? warm.colors.success : 'white',
+                border: `1.5px solid ${loggedThisGen ? warm.colors.success : warm.colors.borderDefined}`,
+                background: loggedThisGen ? 'rgba(52,211,153,0.1)' : '#FFFFFF',
+                color: loggedThisGen ? warm.colors.success : warm.colors.accentPetrol,
                 cursor: logging || loggedThisGen ? 'default' : 'pointer',
               }}
             >
               {logging ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
                 : loggedThisGen ? <Check size={13} /> : <UserCheck size={13} />}
-              {loggedThisGen ? 'Saved' : 'Save This Outreach'}
+              {loggedThisGen ? 'Saved' : "I've sent the request"}
             </button>
           </div>
 
@@ -504,10 +550,58 @@ export const OutreachTemplates: React.FC = () => {
         </>
       )}
 
+      {/* The warm-contacts template and the guide sit below the tool now, not
+          above it: the form is step 2 straight after "find someone". */}
+      <div style={{ marginTop: 28 }}>
+        <WarmContactsCard />
+        <NetworkingGuide />
+      </div>
+
       {/* Follow-up reminders sit below the outreach tool, not above it. */}
       <div style={{ marginTop: 20 }}>
         <OutreachDueNudges compact />
       </div>
+
+      {/* The action bar: today's count on the left, the one next step in gold. */}
+      <div style={{
+        position: 'sticky', bottom: 0, zIndex: 20, marginTop: 20,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+        padding: '12px 16px calc(12px + var(--safe-bottom, 0px))',
+        background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        border: `1px solid ${warm.colors.borderDefined}`, borderRadius: 14,
+        boxShadow: '0 -10px 24px -16px rgba(16,24,40,0.35)',
+      }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: warm.colors.textSecondary }}>
+          {goals ? `${goals.outreach.done} of ${goals.outreach.goal} outreach today` : ' '}
+        </span>
+        {stage === 'write' ? (
+          <button className={formReady && !generating ? 'agc-action agc-action-live' : 'agc-action'}
+            onClick={() => (formReady ? void handleGenerate() : nameRef.current?.focus())}
+            disabled={generating}
+            style={barBtn}>
+            {generating ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+            {generating ? 'Writing…' : formReady ? 'Write my message' : 'Fill in who they are'} {!generating && <ArrowRight size={16} />}
+          </button>
+        ) : stage === 'copy' ? (
+          <button className="agc-action agc-action-live" onClick={() => void copyNote()} style={barBtn}>
+            <Copy size={16} /> Copy the connection note
+          </button>
+        ) : stage === 'send' ? (
+          <button className="agc-action agc-action-live" onClick={() => void handleLogConnected()} disabled={logging} style={barBtn}>
+            {logging ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />} I've sent the request
+          </button>
+        ) : (
+          <button className="agc-action agc-action-live" onClick={nextPerson} style={barBtn}>
+            Next person <ArrowRight size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
+};
+
+/** The bar's one button: gold, the biggest thing on the tab. */
+const barBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 22px', minHeight: 48,
+  ...ACTION, border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer',
 };

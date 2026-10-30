@@ -110,7 +110,7 @@ export function SponsorCard({ sponsor, unlocked, onLockedClick }: Props) {
             fontSize: 11,
             fontWeight: 600,
             color: colors.accentPetrol,
-            background: 'rgba(45, 90, 110, 0.08)',
+            background: 'rgba(18,87,196, 0.08)',
             padding: '2px 10px',
             borderRadius: 10,
             width: 'fit-content',

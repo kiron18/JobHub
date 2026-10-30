@@ -119,7 +119,7 @@ export const ProfileExplainerModal: React.FC<ProfileExplainerModalProps> = ({ op
               lineHeight: 1.55,
               color: warm.colors.textSecondary,
             }}>
-              Every resume and cover letter JobHub writes pulls from this page. Edit once, change every future application.
+              Every resume and cover letter we write pulls from this page. Edit once, change every future application.
             </p>
 
             {/* Section: non-editable target roles */}

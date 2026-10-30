@@ -449,13 +449,14 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
       */}
       <div style={{
         borderRadius: 18, overflow: 'hidden', background: C.bgSurface,
-        border: `1px solid ${positive ? 'rgba(42,157,111,0.35)' : C.borderDefined}`,
+        border: `1px solid ${C.borderDefined}`,
         boxShadow: warm.shadow.focus,
       }}>
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: 14,
         padding: isMobile ? '16px 14px' : '20px 24px',
-        background: positive ? 'rgba(42,157,111,0.08)' : C.bgAlt,
+        // White, not tinted (Kiron, 30 Oct). The divider below does the separating.
+        background: C.bgSurface,
       }}>
         <span style={{
           flexShrink: 0, marginTop: 2,
@@ -485,7 +486,7 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
            copy about 280px to wrap in. See warm.measure. */
         padding: isMobile ? '16px 14px 18px' : '20px 24px 24px',
         background: C.bgSurface,
-        borderTop: `1px solid ${C.borderWhisper}`,
+        borderTop: `1px solid ${C.borderDefined}`,
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
         {promoteApplying ? (

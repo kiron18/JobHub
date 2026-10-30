@@ -1388,7 +1388,7 @@ export const WelcomePage: React.FC = () => {
                 border: colors.borderDefined,
                 divider: colors.borderDefined,
                 accent: colors.accentPetrol,
-                accentSoft: 'rgba(45, 90, 110, 0.10)',
+                accentSoft: 'rgba(18,87,196, 0.10)',
               }}
               textareaStyle={{
                 paddingTop: 40,
@@ -1719,7 +1719,7 @@ export const WelcomePage: React.FC = () => {
               padding: '9px 18px', borderRadius: 99,
               background: colors.bgSurface,
               border: `1px solid ${PANEL_BORDER}`,
-              boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 10px 24px -18px rgba(26,24,20,0.45)',
+              boxShadow: '0 1px 2px rgba(16, 24, 40,0.05), 0 10px 24px -18px rgba(16, 24, 40,0.45)',
               fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
               color: colors.accentPetrol, textDecoration: 'none',
             }}
@@ -2065,7 +2065,7 @@ function ChallengeKitForm({ tight, onBack }: { tight?: boolean; onBack: () => vo
   if (state === 'sent') {
     return (
       <div style={{ textAlign: 'center', padding: tight ? '6px 0 2px' : '10px 0 4px' }}>
-        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: '50%', alignItems: 'center', justifyContent: 'center', background: 'rgba(45,90,110,0.10)', color: colors.accentPetrol }}>
+        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: '50%', alignItems: 'center', justifyContent: 'center', background: 'rgba(18,87,196,0.10)', color: colors.accentPetrol }}>
           <Check size={22} strokeWidth={3} />
         </span>
         <p style={{ margin: '12px 0 0', fontFamily: T.display, fontSize: tight ? 20 : 23, fontWeight: 600, color: colors.textPrimary }}>
@@ -2192,7 +2192,7 @@ function PasteResume({ onSubmit, onCancel }: { onSubmit: (f: File) => void; onCa
  * `borderDefined` because both of these sit over the testimonial marquee, where
  * the site's usual whisper of an edge disappears against a photo.
  */
-const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
+const PANEL_BORDER = 'rgba(16, 24, 40, 0.28)';
 
 /** The Drive, Dropbox and paste chips inside the dropzone. */
 const sourceChipStyle: React.CSSProperties = {
@@ -2486,7 +2486,7 @@ const labelStyle: React.CSSProperties = { display: 'block', fontFamily: T.body, 
 const typoNudgeStyle: React.CSSProperties = {
   display: 'block', width: '100%', textAlign: 'left', marginTop: 10,
   padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
-  background: 'rgba(45,90,110,0.07)', border: '1px solid rgba(45,90,110,0.22)',
+  background: 'rgba(18,87,196,0.07)', border: '1px solid rgba(18,87,196,0.22)',
   fontFamily: T.body, fontSize: 13.5, color: colors.accentPetrol, fontWeight: 600,
 };
 
@@ -2564,7 +2564,7 @@ const DIAGNOSIS_TILE_CSS = `
 .diag-panel-body {
   padding: 22px 24px; border-radius: 16px;
   background: ${colors.bgSurface}; border: 1px solid ${colors.borderDefined};
-  box-shadow: 0 10px 30px -18px rgba(26,24,20,0.30);
+  box-shadow: 0 10px 30px -18px rgba(16, 24, 40,0.30);
 }
 @media (max-width: 640px) {
   /* One column, so the tile turns on its side. The auto margins that centred
@@ -2635,7 +2635,7 @@ function DiagnosisTile({
         order,
         background: colors.bgSurface,
         border: `1px solid ${open ? accent : colors.borderDefined}`,
-        boxShadow: open ? '0 10px 30px -18px rgba(26,24,20,0.32)' : 'none',
+        boxShadow: open ? '0 10px 30px -18px rgba(16, 24, 40,0.32)' : 'none',
       }}
     >
       {/* Out of the flow entirely. It used to share a justify-between row with
@@ -2942,7 +2942,8 @@ function BriefProse({ text }: { text: string }) {
               // half-leading — and the looser the leading, the lower that is.
               marginTop: 6,
               borderRadius: 13,
-              background: colors.accentGold,
+              // Navy, not gold: gold is reserved for the next step.
+              background: colors.bgDeep,
               color: '#FFFFFF',
               fontFamily: T.display,
               fontSize: 'clamp(26px, 2.8vw, 30px)',
@@ -3046,7 +3047,7 @@ const TESTIMONIAL_CARDS = Array.from({ length: 8 }, (_, i) => `/Assets/testimoni
  * thing to click. A deep petrol overlay plus a light blur keeps the emotion of
  * the faces and lets the white card stand forward. Opacity up hides them more.
  */
-const WASH_COLOR = '#0E2128';
+const WASH_COLOR = '#0F2038';
 const WASH_OPACITY = 0.6;
 const WASH_BLUR_PX = 2.5;
 
@@ -3113,7 +3114,7 @@ function TestimonialWash() {
           <div key={r} style={{ display: 'flex', width: 'max-content', gap: 18, marginLeft: r * -84, animation: `agcMarquee${r % 2 === 0 ? 'L' : 'R'} ${MARQUEE_SECONDS + r * MARQUEE_ROW_STEP}s linear infinite` }} className="agc-marquee-row">
             {row.map((src, i) => (
               <img key={`${r}-${i}`} src={src} alt="" loading="lazy" draggable={false}
-                style={{ width: 168, height: 342, objectFit: 'cover', borderRadius: 12, flexShrink: 0, boxShadow: '0 8px 24px -14px rgba(26,24,20,0.35)' }} />
+                style={{ width: 168, height: 342, objectFit: 'cover', borderRadius: 12, flexShrink: 0, boxShadow: '0 8px 24px -14px rgba(16, 24, 40,0.35)' }} />
             ))}
           </div>
         ))}
@@ -3241,7 +3242,7 @@ function OwnershipNote({ onClose }: { onClose: () => void }) {
       style={{
         position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
         alignItems: 'center', justifyContent: 'center', padding: 24,
-        background: 'rgba(26,24,20,0.34)',
+        background: 'rgba(16, 24, 40,0.34)',
       }}
     >
       <motion.div
@@ -3255,7 +3256,7 @@ function OwnershipNote({ onClose }: { onClose: () => void }) {
           position: 'relative', width: '100%', maxWidth: 430,
           background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
           borderRadius: 18, padding: '26px 28px',
-          boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 30px 60px -30px rgba(26,24,20,0.5)',
+          boxShadow: '0 1px 2px rgba(16, 24, 40,0.05), 0 30px 60px -30px rgba(16, 24, 40,0.5)',
         }}
       >
         <button
@@ -3292,7 +3293,7 @@ function OwnershipNote({ onClose }: { onClose: () => void }) {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 12px', borderRadius: 99, background: 'rgba(45,90,110,0.10)', border: '1px solid rgba(45,90,110,0.22)' }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 12px', borderRadius: 99, background: 'rgba(18,87,196,0.10)', border: '1px solid rgba(18,87,196,0.22)' }}>
       <span style={{ fontFamily: T.body, fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.accentPetrol }}>{children}</span>
     </div>
   );

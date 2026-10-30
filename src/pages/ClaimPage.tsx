@@ -167,7 +167,7 @@ export default function ClaimPage() {
             fontWeight: 600, fontSize: '1.0625rem', fontFamily: typeTokens.body,
             cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-            boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+            boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 4px 14px rgba(18,87,196,0.18)',
           }}
         >
           {submitting && <Loader2 size={18} className="animate-spin" />}

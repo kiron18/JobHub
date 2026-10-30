@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { clampConnectionNote, CONNECTION_NOTE_LIMIT } from '../lib/connectionNote';
 import { EXEMPT_EMAILS } from './stripe';
 
 /**
@@ -226,7 +227,25 @@ Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
     const cleaned = stripDashes(content);
-    return res.json(parseLLMJson(cleaned));
+    const out = parseLLMJson(cleaned) as Record<string, unknown>;
+    // The page promises the note fits a free account's 200 characters, and the
+    // model overshoots now and then (214 in the 30 Oct review). One quick ask
+    // to shorten it, then a whole-sentence clamp if it is still over.
+    const note = typeof out?.connectionNote === 'string' ? out.connectionNote : '';
+    if (note.length > CONNECTION_NOTE_LIMIT) {
+      try {
+        const { content: shorter } = await callClaude(
+          `Shorten this LinkedIn connection request note to at most 180 characters. Keep the name, the specific detail about their work and the friendly close. Plain text only, no quotes, no em dashes.
+
+${note}`,
+          false,
+        );
+        out.connectionNote = clampConnectionNote(stripDashes(shorter).replace(/^["']|["']$/g, ''));
+      } catch {
+        out.connectionNote = clampConnectionNote(note);
+      }
+    }
+    return res.json(out);
   } catch (err: any) {
     console.error('[LinkedIn /outreach]', err.message);
     return res.status(500).json({ error: 'Generation failed' });

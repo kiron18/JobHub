@@ -229,7 +229,7 @@ function WhenBanner({ whenLabel, untilLabel, children }: {
     <div style={{
       padding: '26px 24px', borderRadius: 16,
       background: colors.bgDeep, color: colors.textOnDeep,
-      boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 10px 30px rgba(26,24,20,0.14)',
+      boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 10px 30px rgba(16, 24, 40,0.14)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
         <Video size={17} color={colors.accentGold} style={{ flex: '0 0 auto' }} />
@@ -558,7 +558,7 @@ export default function SessionSignupPage() {
           <div style={{
             marginTop: 32, padding: '26px 24px', borderRadius: 16,
             background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
-            boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 8px 28px rgba(26,24,20,0.05)',
+            boxShadow: '0 1px 2px rgba(16, 24, 40,0.04), 0 8px 28px rgba(16, 24, 40,0.05)',
           }}>
             <style>{GRID_CSS}</style>
 
@@ -728,7 +728,7 @@ export default function SessionSignupPage() {
                 fontWeight: 600, fontSize: '1.0625rem', fontFamily: typeTokens.body,
                 cursor: 'pointer', textDecoration: 'none',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 6px 20px rgba(45,90,110,0.22)',
+                boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 6px 20px rgba(18,87,196,0.22)',
               }}
             >
               Open the group and post my question
@@ -816,7 +816,7 @@ export default function SessionSignupPage() {
         <div style={{
           background: colors.bgSurface, borderRadius: 16, padding: '30px 28px',
           border: `1px solid ${colors.borderWhisper}`,
-          boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 8px 28px rgba(26,24,20,0.05)',
+          boxShadow: '0 1px 2px rgba(16, 24, 40,0.04), 0 8px 28px rgba(16, 24, 40,0.05)',
         }}>
           <div data-error={errors.has('name')}>
             <Field label="Your name" error={errors.has('name')}>
@@ -931,7 +931,7 @@ export default function SessionSignupPage() {
               fontWeight: 600, fontSize: '1.0625rem', fontFamily: typeTokens.body,
               cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-              boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+              boxShadow: '0 1px 2px rgba(16, 24, 40,0.06), 0 4px 14px rgba(18,87,196,0.18)',
             }}
           >
             {submitting && <Loader2 size={18} className="animate-spin" />}

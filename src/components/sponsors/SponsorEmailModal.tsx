@@ -50,7 +50,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(26, 24, 20, 0.6)',
+        background: 'rgba(16, 24, 40, 0.6)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
