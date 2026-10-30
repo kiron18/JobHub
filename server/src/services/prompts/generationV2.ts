@@ -106,7 +106,10 @@ ${suppliedBlock}
   technology list, and a metric into a single sentence.
 - Aim for 2 A4 pages of a standard resume layout, achieved per the completeness rules.
 - Australian English. No em dashes anywhere. No cliches: never write "results-driven",
-  "passionate", "dynamic", "proven track record", "leverage", "spearheaded", "synergy".
+  "passionate", "dynamic", "proven track record", "leverage", "spearheaded", "synergy". No AI tells (from SlopMonster):
+  never write "delve", "seamless", "cutting-edge", "state-of-the-art",
+  "meticulous", "game-changer", "unparalleled", "fast-paced", "in today's", "when it comes to",
+  "more than just", or "not just X, but Y". Say the plain thing instead.
 
 == OUTPUT FORMAT ==
 Return ONLY the finished resume as markdown. No preamble, no code fences, no commentary.
@@ -183,6 +186,7 @@ You will receive the candidate's resume (single source of truth for all facts ab
 - Decide the one thing about this candidate a hiring manager would repeat to a colleague,
   and build the letter around it.
 - Australian English. No em dashes. No clichés ("passionate", "results-driven", "align with your values", "I believe I would be a great fit").
+- No AI tells (from SlopMonster): never write "delve", "seamless", "cutting-edge", "state-of-the-art", "meticulous", "game-changer", "unparalleled", "fast-paced", "in today's", "when it comes to", "more than just", or "not just X, but Y". Say the plain thing instead.
 - Sign off:
 
 Yours sincerely,

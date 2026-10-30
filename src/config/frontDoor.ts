@@ -12,9 +12,10 @@
  * is removing its line.
  *
  *   'everyone'    nobody reaches it
- *   'signed_out'  strangers are sent home; members still reach it. /pricing is
- *                 where a member pays (the app and Stripe's cancel URL send them
- *                 there) and /classroom is linked from the WhatsApp check-ins.
+ *   'signed_out'  strangers are sent home; members still reach it. /classroom
+ *                 is linked from the WhatsApp check-ins. /pricing is open to
+ *                 everyone since 30 Oct 2026: a stranger sees the real price,
+ *                 and the page sends them to the front door rather than Stripe.
  *
  * Keyed by the route's first path segment, so '/free' covers every /free/:slug.
  */
@@ -33,7 +34,6 @@ export const CLOSED_ROUTES: Record<string, ClosedFor> = {
   '/free': 'everyone',
   '/classroom': 'signed_out',
   // The Stripe card trial, a second route to a trial.
-  '/pricing': 'signed_out',
   // Internal review and test pages.
   '/styleguide': 'signed_out',
   '/dev': 'signed_out',

@@ -101,6 +101,13 @@ export interface IntakeAnalysis {
 export const MAX_QUESTIONS = 10;
 
 /**
+ * 0.2, down from 0.4 on 30 Oct 2026. The same resume uploaded twice in the flow
+ * review got 6 questions on one run and 8 on the next. This is a reading, not
+ * creative writing, so it should come out the same each time.
+ */
+const ANALYSIS_TEMPERATURE = 0.2;
+
+/**
  * The brief is a moment, not an audit.
  *
  * This used to be uncapped, on the reasoning that anything found should be
@@ -194,7 +201,7 @@ Return ONLY this JSON object and nothing else:
     "owner": "we_fix if you could fix it from the document alone, which is most of them | needs_you if it needs a fact only they have | worth_knowing if neither of you can fix it quickly",
     "severity": "critical if it stops the resume being read or parsed at all | important if it costs interviews | minor if it is polish"
   }],
-  "strengths": ["something the resume genuinely does well, specific enough to point at. Say only what is true, and return fewer rather than inventing praise"],
+  "strengths": ["something the resume genuinely does well, specific enough to point at. Say only what is true, and return fewer rather than inventing praise. Only praise content: never its length, page count, layout or design, because we rebuild the layout and that praise would not be true of what we hand back"],
   "mustKeep": {
     "employers": ["every company, organisation, agency, client or place of work named anywhere, including casual jobs, internships and volunteering, copied as written"],
     "qualifications": ["every degree, diploma, certificate, licence, course, publication and award, with the institution, copied as written"],
@@ -351,14 +358,14 @@ export async function analyseIntakeResume(
           PROMPT(resumeText, signalBlock, true, ''),
           { buffer: document!.buffer, filename: document!.filename },
           true,
-          0.4,
+          ANALYSIS_TEMPERATURE,
           ANALYSIS_MAX_TOKENS,
         )
       : await callLLMWithRetry(
           PROMPT(resumeText, signalBlock, false, structureBlock),
           true,
           3,
-          0.4,
+          ANALYSIS_TEMPERATURE,
           ANALYSIS_MAX_TOKENS,
         );
 
@@ -399,7 +406,7 @@ export async function analyseIntakeResume(
   // transport errors, so a malformed JSON body used to fail the whole upload on
   // the first try — which is why Word uploads failed intermittently while the
   // same file succeeded when run directly. This response is long and generated
-  // at temperature 0.4, so an occasional bad body is expected, not exceptional.
+  // at ANALYSIS_TEMPERATURE, so an occasional bad body is expected, not exceptional.
   let lastErr: unknown;
   for (let i = 1; i <= 3; i++) {
     try {

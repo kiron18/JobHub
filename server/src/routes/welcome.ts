@@ -461,14 +461,33 @@ router.post('/capture', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * The visa choices on the front door's challenge-kit form, by the short code
+ * that rides in the email link. The labels are the onboarding form's own
+ * (VISA_STATUS_OPTIONS in OnboardingIntake.tsx), so a profile filled from
+ * either place reads the same. Keep the two lists in step.
+ */
+export const WELCOME_VISA_LABELS: Record<string, string> = {
+  '485': 'Graduate Work Visa (Subclass 485)',
+  student: 'Student Visa',
+  whv: 'Working Holiday Visa',
+  skilled: 'Skilled Visa (482 / 186 / 189 / 190)',
+  pr: 'Permanent Resident',
+  citizen: 'Australian Citizen',
+  other: 'Other / Not specified',
+};
+
 // ── POST /api/welcome/later ──────────────────────────────────────────────────
-// "Finish on your laptop", from the front door, for someone whose resume is not
-// on the device in their hand. No session exists yet, so this is only an address
-// and a link home. One per address a day: it is a form anyone can type into.
+// "Don't have your resume on this device?", from the front door. No session
+// exists yet, so this is an address, the role they are aiming at and their visa,
+// and the 90-Day Challenge playbook with a link home that carries the last two
+// back. One per address a day: it is a form anyone can type into.
 router.post('/later', async (req: Request, res: Response) => {
   try {
     const addr = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : '';
     if (!EMAIL_RE.test(addr)) { res.status(400).json({ error: 'Enter a valid email address.' }); return; }
+    const role = typeof req.body?.role === 'string' ? req.body.role.replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    const visa = typeof req.body?.visa === 'string' && WELCOME_VISA_LABELS[req.body.visa] ? req.body.visa : '';
 
     const recent = await prisma.emailSend.findFirst({
       where: {
@@ -478,8 +497,8 @@ router.post('/later', async (req: Request, res: Response) => {
       },
       select: { id: true },
     });
-    captureFunnel(req, funnelId(req), 'welcome_email_captured', { reason: 'later', repeat: !!recent });
-    if (!recent) await sendWelcomeLaterEmail({ to: addr });
+    captureFunnel(req, funnelId(req), 'welcome_email_captured', { reason: 'later', repeat: !!recent, hasRole: !!role, visa: visa || null });
+    if (!recent) await sendWelcomeLaterEmail({ to: addr, role, visa, visaLabel: visa ? WELCOME_VISA_LABELS[visa] : '' });
     res.json({ ok: true });
   } catch (err) {
     console.error('[welcome/later]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
@@ -610,7 +629,9 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
   try {
     const userId = req.user!.id;
     const email = req.user!.email ?? null;
-    const { token, targetRoles, targetCity } = req.body || {};
+    const { token, targetRoles, targetCity, visa } = req.body || {};
+    // From the challenge-kit form, when they came back through its email link.
+    const visaStatus = typeof visa === 'string' ? WELCOME_VISA_LABELS[visa] : undefined;
 
     const roles = (Array.isArray(targetRoles) ? targetRoles : [])
       .map((r: unknown) => String(r).trim())
@@ -684,6 +705,7 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       targetRoles: roles,
       targetCity: loc,
       location: loc,
+      ...(visaStatus ? { visaStatus } : {}),
       hasCompletedOnboarding: true,
     };
 

@@ -54,12 +54,21 @@ export function ChallengeIntro({ busy, onStart }: { busy: boolean; onStart: () =
         <h2 style={{ ...warm.text.h2, margin: '28px 0 8px', color: warm.colors.textPrimary }}>
           {COPY.challengeHeading}
         </h2>
-        <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          {COPY.challenge.before}
-          <strong style={{ color: warm.colors.textPrimary, fontWeight: 700 }}>{COPY.challenge.bold}</strong>
-          {COPY.challenge.after}
-        </p>
-        <p style={{ margin: '10px 0 0', fontSize: 17, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
+          {COPY.points.map((pt, i) => (
+            <li key={pt.bold} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 16, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+              <span aria-hidden style={{
+                flexShrink: 0, width: 24, height: 24, marginTop: 1, borderRadius: '50%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                background: warm.colors.accentPetrol, color: '#fff', fontSize: 12.5, fontWeight: 700,
+              }}>{i + 1}</span>
+              <span>
+                <strong style={{ color: warm.colors.textPrimary, fontWeight: 700 }}>{pt.bold}</strong>{' '}{pt.rest}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p style={{ margin: '16px 0 0', fontSize: 17, lineHeight: 1.55, fontWeight: 600, color: warm.colors.textPrimary }}>
           {COPY.challengeFollow}
         </p>
 

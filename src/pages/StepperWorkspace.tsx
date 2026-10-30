@@ -1799,7 +1799,9 @@ function TrackStep({
                     void announce();
                 }
             } catch {
-                if (!cancelled) setAutoSaveError(true);
+                // Undo the optimistic tick from the button, so "Almost there"
+                // and its retry take over instead of a false "Saved".
+                if (!cancelled) { setSavedAt(undefined); setAutoSaveError(true); }
             } finally {
                 if (!cancelled) setConfirming(false);
             }
@@ -1913,7 +1915,11 @@ function TrackStep({
             {awaitingSend && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                     <button
-                        onClick={() => { setConfirming(true); setMarkNow(true); }}
+                        // Optimistic. The save took 6.5s in the 30 Oct review,
+                        // and a spinner that long reads as stuck, so the screen
+                        // moves to "Saved" at once and the request catches up.
+                        // A failure rolls it back (the catch above).
+                        onClick={() => { setConfirming(true); setSavedAt(new Date().toISOString()); setMarkNow(true); }}
                         disabled={confirming}
                         style={{
                             display: 'inline-flex', alignItems: 'center', gap: 8,

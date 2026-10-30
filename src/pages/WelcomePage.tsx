@@ -3,7 +3,7 @@ import { ChallengeTicker } from '../components/shared/ChallengeTicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, UploadCloud, ArrowRight, Plus, X, Check, ChevronDown, AlertTriangle, Eye, PencilLine, Sparkles, FileText } from 'lucide-react';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Check, ChevronDown, AlertTriangle, Eye, PencilLine, Sparkles, FileText, Lock, CreditCard, Clock, ClipboardPaste } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted, trackResumeQuestionStarted, trackResumeQuestionCompleted, trackEmailSubmitted,
   funnelIds, trackEmailOutcome, welcomeFailureReason, trackUploadPickerOpened, trackResumeFileSelected, trackLoginClicked,
-  trackHowItWorksClicked, trackHowItWorksViewed, trackHowItWorksStartClicked, trackChallengeTickerClicked,
+  trackHowItWorksViewed, trackHowItWorksStartClicked, trackChallengeTickerClicked,
   trackNoResumeOpened,
 } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
@@ -231,6 +231,10 @@ export const WelcomePage: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [brief, setBrief] = useState('');
   const [roles, setRoles] = useState<string[]>(['']);
+  // Back from the challenge-kit email: the role and visa they gave on the front door.
+  const [kitPrefill] = useState<KitPrefill | null>(readKitPrefill);
+  const [kitOpen, setKitOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
   /*
     Rows whose rung word we took off, so the change can be SHOWN rather than
     done behind their back.
@@ -379,7 +383,8 @@ export const WelcomePage: React.FC = () => {
     // Seeded from suggestedTargetRole, not currentRole: the target is where
     // they are going, and a current title like "Data Analyst (Intern)" would
     // otherwise aim the whole rebuild at another internship.
-    const seed = data.suggestedTargetRole || data.currentRole;
+    // A role they typed themselves on the challenge-kit form beats our guess.
+    const seed = kitPrefill?.role || data.suggestedTargetRole || data.currentRole;
     if (seed) setRoles([seed]);
   }
 
@@ -716,7 +721,7 @@ export const WelcomePage: React.FC = () => {
     if (clean.length === 0) { endWelcomeHandoff(); toast.error('Add at least one target role.'); setStep('roles'); return; }
     setStep('finishing');
     try {
-      await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null, ...funnelIds() });
+      await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null, visa: kitPrefill?.visa || undefined, ...funnelIds() });
       // Terminal success: from here they have an account AND a resume on file.
       trackWelcomeCompleted(!user);
 
@@ -1707,8 +1712,7 @@ export const WelcomePage: React.FC = () => {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: EASE }}
             style={{
-              // 60, not 20: clears the running challenge banner across the top.
-              position: 'fixed', top: 60, right: 24, zIndex: 3,
+              position: 'fixed', top: 20, right: 24, zIndex: 3,
               display: 'inline-flex', alignItems: 'center',
               padding: '9px 18px', borderRadius: 99,
               background: colors.bgSurface,
@@ -1722,7 +1726,7 @@ export const WelcomePage: React.FC = () => {
           </motion.a>
         )}
       </AnimatePresence>
-      <Shell wide onWash ticker={step === 'upload'} footer={step === 'upload' ? <HowItWorksArticle onStart={() => { trackHowItWorksStartClicked(); document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} /> : undefined}>
+      <Shell wide onWash footer={step === 'upload' ? <HowItWorksArticle onStart={() => { trackHowItWorksStartClicked(); document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} /> : undefined}>
       {/* The first screen keeps its own full-height, centred composition now
           that the article sits under it: the Shell only centres content that
           is shorter than the viewport, so without this the card would jump
@@ -1760,11 +1764,18 @@ export const WelcomePage: React.FC = () => {
            link. Anything below the fold on the front door is a thing most
            visitors never find out is there. */
         padding: isMobile ? '22px 18px' : 'clamp(28px, 5vh, 44px) clamp(22px, 4vw, 40px)',
-        boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 26px 60px -34px rgba(26,24,20,0.45)',
+        /* Lifted hard off the darkened wall (30 Oct review): a faint white
+           ring for a crisp edge, then a deep shadow so the eye lands here. */
+        boxShadow: '0 0 0 5px rgba(255,255,255,0.14), 0 2px 4px rgba(10,20,24,0.10), 0 34px 80px -24px rgba(5,12,16,0.70)',
       }}>
       <div style={{ textAlign: 'center' }}>
         <BrandLockup tight={isMobile} />
-        <Display tight={isMobile}>Land your first role in Australia with a data backed system.</Display>
+        <Display tight={isMobile}>Land your first role in Australia with the 90-Day Challenge.</Display>
+        {step === 'upload' && !kitOpen && (
+          <p style={{ margin: '0 auto', maxWidth: 520, fontFamily: T.body, fontSize: isMobile ? 15 : 16.5, lineHeight: 1.5, color: colors.textSecondary }}>
+            We provide the rules, the AI tools and the resume engine. You show up and execute.
+          </p>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -1773,11 +1784,32 @@ export const WelcomePage: React.FC = () => {
             style={{ marginTop: 8 }}>
             <CyclingStatus lines={READING_LINES} align="center" expectedMs={READING_EXPECTED_MS} />
           </motion.div>
+        ) : kitOpen ? (
+          <motion.div key="kit" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: EASE }} style={{ marginTop: isMobile ? 16 : 22 }}>
+            <ChallengeKitForm tight={isMobile} onBack={() => setKitOpen(false)} />
+          </motion.div>
         ) : (
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <button
+            {/* Above the box, the reason to use it. A returning kit visitor is
+                greeted instead, with the role they already gave us. */}
+            <p style={{ margin: isMobile ? '16px 0 10px' : '22px 0 12px', textAlign: 'center', fontFamily: T.body, fontSize: isMobile ? 13.5 : 14.5, fontWeight: 700, color: colors.accentPetrol }}>
+              {kitPrefill?.role
+                ? `Welcome back. Drop your resume to start Day 1 as a ${kitPrefill.role}.`
+                : isMobile ? 'Drop your resume to unlock Day 1' : 'Drop your resume to unlock Day 1 · Free instant diagnosis'}
+            </p>
+            {pasteOpen ? (
+              <PasteResume
+                onCancel={() => setPasteOpen(false)}
+                onSubmit={f => { trackResumeFileSelected('paste', f); setFile(f); void uploadResume(f); }}
+              />
+            ) : (
+            <div
+              role="button"
+              tabIndex={0}
               className="agc-dropzone"
               onClick={() => { trackUploadPickerOpened(); inputRef.current?.click(); }}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trackUploadPickerOpened(); inputRef.current?.click(); } }}
               onDragOver={e => { e.preventDefault(); if (!dragging) setDragging(true); }}
               onDragLeave={e => { e.preventDefault(); setDragging(false); }}
               onDrop={e => {
@@ -1787,71 +1819,81 @@ export const WelcomePage: React.FC = () => {
                 if (f) { trackResumeFileSelected('drop', f); setFile(f); void uploadResume(f); }
               }}
               style={{
-                width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', gap: 13, textAlign: 'center',
-                /* Smaller than it was. The box was tall enough that the label
-                   sat marooned in the middle of it; at this height the words
-                   have room without the target becoming the whole screen. */
-                padding: isMobile ? '22px 18px' : 'clamp(26px, 5.5vh, 46px) 26px', borderRadius: 16, cursor: 'pointer',
-                /* One thin solid stroke. Dashed plus a pulsing glow read as an
-                   unfinished placeholder, which is the opposite of what the
-                   only thing to click on the page should look like. */
-                border: `1px solid ${dragging || file ? colors.accentPetrol : PANEL_BORDER}`,
-                background: dragging || file ? 'rgba(45,90,110,0.06)' : colors.bgAlt,
+                padding: isMobile ? '20px 16px' : 'clamp(24px, 5vh, 40px) 26px', borderRadius: 16, cursor: 'pointer',
+                /* Bolder than the whisper it was: a 2px petrol stroke, so the
+                   one thing to do on the page is the first thing seen. */
+                border: `2px ${dragging || file ? 'solid' : 'dashed'} ${colors.accentPetrol}`,
+                background: dragging || file ? 'rgba(45,90,110,0.08)' : 'rgba(45,90,110,0.035)',
                 transition: 'border-color .15s ease, background .15s ease',
               }}
             >
-              <span style={{ color: dragging || file ? colors.accentPetrol : colors.textMuted }}>
-                <UploadCloud size={isMobile ? 32 : 42} strokeWidth={1.5} />
+              <span style={{ color: colors.accentPetrol }}>
+                <UploadCloud size={isMobile ? 32 : 42} strokeWidth={1.6} />
               </span>
               <span style={{ minWidth: 0, maxWidth: '100%' }}>
                 <span style={{ display: 'block', fontFamily: T.display, fontSize: isMobile ? 19 : 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {file ? file.name : dragging ? 'Drop it here' : 'Upload your resume'}
                 </span>
                 <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, color: colors.textMuted, marginTop: 7 }}>
-                  {isMobile ? 'Tap to choose the file. PDF or Word, up to 5MB.' : 'Drag it in, or click to browse. PDF or Word, up to 5MB.'}
+                  {isMobile ? 'Tap to choose. PDF or Word, up to 5MB.' : 'Drag it in, or click to browse. PDF or Word, up to 5MB.'}
                 </span>
               </span>
-            </button>
+              {/* The other places a resume lives. On a phone the system file
+                  picker already reaches Google Drive and Dropbox, so those two
+                  open it; on a laptop they would not, so only paste shows. */}
+              <span style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: isMobile ? 6 : 7 }}>
+                {isMobile && ([['Drive', <DriveMark key="d" />], ['Dropbox', <DropboxMark key="x" />]] as const).map(([label, mark]) => (
+                  <button key={label} type="button" className="agc-source-chip"
+                    onClick={e => { e.stopPropagation(); trackUploadPickerOpened(); inputRef.current?.click(); }}
+                    style={sourceChipStyle}>
+                    {mark} {label}
+                  </button>
+                ))}
+                <button type="button" className="agc-source-chip"
+                  onClick={e => { e.stopPropagation(); setPasteOpen(true); }}
+                  style={sourceChipStyle}>
+                  <ClipboardPaste size={14} aria-hidden /> Paste text
+                </button>
+              </span>
+            </div>
+            )}
             <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0] ?? null; setFile(f); if (f) { trackResumeFileSelected('browse', f); uploadResume(f); } }} />
-            {/* The risk, removed in one line. All three are true until the claim
-                step: nothing is charged, the read takes about a minute, and no
-                account exists until they choose to save the result. */}
-            <p style={{ margin: '10px 0 0', textAlign: 'center', fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-              {isMobile ? 'Free · About a minute · No account needed' : 'Free · Your diagnosis in about a minute · No account needed'}
-            </p>
-            {!file && <NoResumeHelp tight={isMobile} />}
+            {/* Trust, right where the hesitation is: the moment of handing over
+                a resume. Privacy first, then the price, then the time. Every
+                one is true until the claim step. */}
+            <ul style={{
+              listStyle: 'none', margin: isMobile ? '12px 0 0' : '14px 0 0', padding: 0,
+              display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: isMobile ? '6px 14px' : '6px 20px',
+              fontFamily: T.body, fontSize: isMobile ? 12.5 : 13.5, color: colors.textSecondary,
+            }}>
+              {([
+                [Lock, 'Private, never sold or shown to employers'],
+                [CreditCard, '3 days free, no card. Add one for 4 more'],
+                [Clock, 'Diagnosis in a minute, no account needed'],
+              ] as const).map(([Icon, label]) => (
+                <li key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Icon size={14} aria-hidden style={{ color: colors.accentPetrol, flexShrink: 0 }} /> {label}
+                </li>
+              ))}
+            </ul>
+            {!file && !pasteOpen && (
+              <p style={{ margin: isMobile ? '14px 0 0' : '18px 0 0', textAlign: 'center' }}>
+                <button type="button"
+                  onClick={() => { trackNoResumeOpened(); setKitOpen(true); }}
+                  style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.textSecondary }}>
+                  Don't have your resume on this device?{' '}
+                  <span style={{ color: colors.accentPetrol, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                    Get the Challenge rules and Day 1 checklist sent to your inbox →
+                  </span>
+                </button>
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Said after the box, not before it. The headline names the problem and
-          the box is the thing to do about it; this is the promise they carry
-          away once they have already acted.
-
-          The promise stays a promise here and does not argue for itself. An
-          earlier draft made the case on this screen ("a good resume is only the
-          baseline") and that is the wrong screen for it: it devalues the thing
-          they are about to be given, before they have been given it. The
-          argument now lives where it costs nothing, on the rebuilt resume and
-          the fit check. */}
-      {step === 'upload' && <HowItWorksStrip tight={isMobile} />}
-      <p style={{ margin: isMobile ? '12px 0 0' : '14px 0 0', textAlign: 'center' }}>
-        <a
-          href={`#${HOW_IT_WORKS_ID}`}
-          onClick={e => {
-            e.preventDefault();
-            trackHowItWorksClicked();
-            const el = document.getElementById(HOW_IT_WORKS_ID);
-            const scroller = el?.closest('[data-shell-scroll]') as HTMLElement | null;
-            if (el && scroller) scroller.scrollTo({ top: el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop, behavior: 'smooth' });
-          }}
-          style={{ ...quietLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
-        >
-          Find out how <ChevronDown size={14} aria-hidden />
-        </a>
-      </p>
       </div>
       </div>
       </Shell>
@@ -1934,68 +1976,72 @@ function EmailDiagnosis({ token, defaultEmail }: { token: string; defaultEmail: 
 }
 
 /**
- * The three steps, as one line of pictures rather than a paragraph. A stranger
- * on the front door has no idea what "the system" is; this is the whole of it,
- * and the trial line says what it costs to find out.
+ * The visa choices on the challenge-kit form. The code rides in the email link
+ * and the server maps it to the onboarding form's own label
+ * (WELCOME_VISA_LABELS in server/src/routes/welcome.ts), so keep them in step.
  */
-function HowItWorksStrip({ tight }: { tight?: boolean }) {
-  const steps = ['Fix your resume', 'Set your profile', 'Send quality applications, consistently'];
-  return (
-    <div style={{ marginTop: tight ? 16 : 22, textAlign: 'center' }}>
-      <ol style={{
-        listStyle: 'none', margin: 0, padding: 0,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: tight ? 6 : 10,
-      }}>
-        {steps.map((label, i) => (
-          <React.Fragment key={label}>
-            {i > 0 && <ArrowRight size={tight ? 13 : 15} aria-hidden style={{ flexShrink: 0, marginTop: tight ? 4 : 5, color: colors.textMuted }} />}
-            <li style={{ flex: '1 1 0', maxWidth: 170, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-              <span style={{
-                width: tight ? 22 : 26, height: tight ? 22 : 26, borderRadius: '50%',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: i === 0 ? colors.accentPetrol : colors.bgAlt,
-                color: i === 0 ? '#fff' : colors.accentPetrol,
-                border: `1px solid ${colors.accentPetrol}`,
-                fontFamily: T.body, fontSize: tight ? 11.5 : 12.5, fontWeight: 700,
-              }}>{i + 1}</span>
-              <span style={{ fontFamily: T.body, fontSize: tight ? 12 : 13, lineHeight: 1.35, fontWeight: 600, color: colors.textSecondary }}>
-                {label}
-              </span>
-            </li>
-          </React.Fragment>
-        ))}
-      </ol>
-      <p style={{ margin: tight ? '10px 0 0' : '14px 0 0', fontFamily: T.body, fontSize: tight ? 12.5 : 13.5, color: colors.textMuted }}>
-        <strong style={{ color: colors.textPrimary }}>Free for 3 days, no card.</strong> Add a card for 4 more. Have your resume ready to get started.
-      </p>
-    </div>
-  );
-}
+const KIT_VISAS: Array<[code: string, label: string]> = [
+  ['485', 'Graduate visa (485)'],
+  ['student', 'Student visa'],
+  ['whv', 'Working holiday'],
+  ['skilled', 'Skilled visa'],
+  ['pr', 'Permanent resident'],
+  ['citizen', 'Citizen'],
+  ['other', 'Other'],
+];
 
-/** Gmail's own search, for a resume they have emailed or been sent before. */
-const GMAIL_RESUME_SEARCH = 'https://mail.google.com/mail/u/0/#search/has%3Aattachment+(resume+OR+cv)';
+/** What the challenge-kit email link carried back, kept for the rest of the visit. */
+type KitPrefill = { role: string; visa: string };
+const KIT_PREFILL_KEY = 'agc_welcome_kit_prefill';
 
 /**
- * "Don't have your resume on this device?"
- *
- * Most phone visitors are not without a resume, they are without the FILE on
- * that phone. It almost always lives somewhere they can reach: an email they
- * sent an application from, their LinkedIn profile, their Seek profile. Each
- * option here is a place to go and get it, plus the one way out that does not
- * need it at all, which is a link to finish on the laptop. One link on the
- * front door, so it never competes with the upload box.
+ * Reads ?src=later&role=…&visa=… off the email link once, keeps it for the
+ * visit, and tidies the address bar. Nothing in it identifies anyone: the
+ * address they gave stays in their inbox, not in a URL analytics can see.
  */
-function NoResumeHelp({ tight }: { tight?: boolean }) {
-  const [open, setOpen] = useState(false);
+function readKitPrefill(): KitPrefill | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('src') === 'later' && (params.get('role') || params.get('visa'))) {
+      const visa = params.get('visa') || '';
+      const kit = {
+        role: (params.get('role') || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+        visa: KIT_VISAS.some(([c]) => c === visa) ? visa : '',
+      };
+      sessionStorage.setItem(KIT_PREFILL_KEY, JSON.stringify(kit));
+      params.delete('role');
+      params.delete('visa');
+      const rest = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+      return kit;
+    }
+    const saved = JSON.parse(sessionStorage.getItem(KIT_PREFILL_KEY) || 'null');
+    return saved && typeof saved.role === 'string' ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * "Don't have your resume on this device?", as a way forward rather than a way
+ * out. Most phone visitors do have a resume, just not the file in their hand,
+ * so instead of losing them this asks three small things (the foot in the door)
+ * and sends the 90-Day Challenge rules, the Day 1 checklist and a link that
+ * brings them back here with their role and visa already filled in.
+ */
+function ChallengeKitForm({ tight, onBack }: { tight?: boolean; onBack: () => void }) {
+  const [role, setRole] = useState('');
+  const [visa, setVisa] = useState('');
   const [addr, setAddr] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  async function sendLink() {
+  async function send() {
     const v = addr.trim().toLowerCase();
+    if (!role.trim()) { toast.error('Add the role you are aiming for.'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast.error('Enter a valid email address.'); return; }
     setState('sending');
     try {
-      await api.post('/welcome/later', { email: v, ...funnelIds() });
+      await api.post('/welcome/later', { email: v, role: role.trim(), visa: visa || undefined, ...funnelIds() });
       setState('sent');
     } catch (err) {
       setState('idle');
@@ -2003,126 +2049,134 @@ function NoResumeHelp({ tight }: { tight?: boolean }) {
     }
   }
 
-  const row: React.CSSProperties = {
-    display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
-    padding: '12px 14px', borderRadius: 12, background: colors.bgAlt,
-    border: `1px solid ${colors.borderWhisper}`,
-  };
-  const num: React.CSSProperties = {
-    flexShrink: 0, width: 22, height: 22, borderRadius: '50%', marginTop: 1,
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
-    fontFamily: T.body, fontSize: 11.5, fontWeight: 700, color: colors.accentPetrol,
-  };
-  const head: React.CSSProperties = { display: 'block', fontFamily: T.body, fontSize: 14, fontWeight: 700, color: colors.textPrimary };
-  const body: React.CSSProperties = { display: 'block', marginTop: 3, fontFamily: T.body, fontSize: 13, lineHeight: 1.5, color: colors.textSecondary };
-  const link: React.CSSProperties = { color: colors.accentPetrol, fontWeight: 700, textUnderlineOffset: 3 };
+  const backLink = (label: string) => (
+    <button type="button" onClick={onBack}
+      style={{ ...quietLinkStyle, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer' }}>
+      {label}
+    </button>
+  );
 
-  // On a phone the file is usually on the laptop, so that way out leads there.
-  const options: Array<[string, (n: number) => React.ReactNode]> = [
-    ['email', (n) => (
-                  <div style={row}>
-                    <span style={num}>{n}</span>
-                    <span>
-                      <span style={head}>Find it in your email</span>
-                      <span style={body}>
-                        If you've ever applied for a job by email, it's in your sent mail.{' '}
-                        <a href={GMAIL_RESUME_SEARCH} target="_blank" rel="noreferrer" style={link}>Search my Gmail</a>
-                        {' '}or search "resume" in your mail app, open the attachment, save it, then come back and upload it.
-                      </span>
-                    </span>
-                  </div>
-    )],
-    ['linkedin', (n) => (
-                  <div style={row}>
-                    <span style={num}>{n}</span>
-                    <span>
-                      <span style={head}>Download your LinkedIn profile</span>
-                      <span style={body}>
-                        On a computer, open your LinkedIn profile, click <strong>Resources</strong> (or <strong>More</strong>) under your name,
-                        then <strong>Save to PDF</strong>. Upload that file here and we build your resume from it.
-                      </span>
-                    </span>
-                  </div>
-    )],
-    ['seek', (n) => (
-                  <div style={row}>
-                    <span style={num}>{n}</span>
-                    <span>
-                      <span style={head}>Get it from Seek</span>
-                      <span style={body}>
-                        If you've applied on Seek, your resume is saved in your{' '}
-                        <a href="https://www.seek.com.au/profile/me" target="_blank" rel="noreferrer" style={link}>Seek profile</a>.
-                        {' '}Open it there and download it.
-                      </span>
-                    </span>
-                  </div>
-    )],
-    ['laptop', (n) => (
-                  <div style={row}>
-                    <span style={num}>{n}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={head}>Finish on your laptop</span>
-                      {state === 'sent' ? (
-                        <span style={{ ...body, color: colors.success, fontWeight: 600 }}>Sent. Open it on the computer that has your resume.</span>
-                      ) : (
-                        <>
-                          <span style={body}>We email you a link. Open it wherever your resume is.</span>
-                          <span style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                            <input
-                              type="email" inputMode="email" autoComplete="email"
-                              value={addr}
-                              onChange={e => setAddr(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter' && state === 'idle') void sendLink(); }}
-                              placeholder="you@email.com"
-                              style={{ ...inputStyle, padding: '10px 12px', fontSize: 14 }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => void sendLink()}
-                              disabled={state === 'sending'}
-                              style={{
-                                flexShrink: 0, cursor: 'pointer', padding: '0 14px', borderRadius: 12, border: 'none',
-                                background: colors.accentPetrol, color: '#fff', fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
-                              }}
-                            >
-                              {state === 'sending' ? <Loader2 size={14} className="animate-spin" /> : 'Send link'}
-                            </button>
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-    )],
-  ];
-  if (tight) options.unshift(options.pop()!);
+  if (state === 'sent') {
+    return (
+      <div style={{ textAlign: 'center', padding: tight ? '6px 0 2px' : '10px 0 4px' }}>
+        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: '50%', alignItems: 'center', justifyContent: 'center', background: 'rgba(45,90,110,0.10)', color: colors.accentPetrol }}>
+          <Check size={22} strokeWidth={3} />
+        </span>
+        <p style={{ margin: '12px 0 0', fontFamily: T.display, fontSize: tight ? 20 : 23, fontWeight: 600, color: colors.textPrimary }}>
+          Your playbook is on its way
+        </p>
+        <p style={{ margin: '8px auto 0', maxWidth: 440, fontFamily: T.body, fontSize: 14.5, lineHeight: 1.55, color: colors.textSecondary }}>
+          Sent to <strong>{addr.trim().toLowerCase()}</strong>. Open the link on the computer that has your resume, and Day 1 starts with your role already filled in.
+        </p>
+        <p style={{ margin: '14px 0 0' }}>{backLink('Found it after all? Upload it now')}</p>
+      </div>
+    );
+  }
 
+  const field: React.CSSProperties = { ...inputStyle, padding: '12px 14px' };
+  const q: React.CSSProperties = { display: 'block', margin: '0 0 7px', fontFamily: T.body, fontSize: 14, fontWeight: 700, color: colors.textPrimary, textAlign: 'left' };
   return (
-    <div style={{ marginTop: tight ? 10 : 12, textAlign: 'center' }}>
-      <button
-        type="button"
-        onClick={() => { setOpen(o => !o); if (!open) trackNoResumeOpened(); }}
-        aria-expanded={open}
-        style={{ ...quietLinkStyle, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-      >
-        Don't have your resume on this device?
-        <ChevronDown size={14} aria-hidden style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }} />
+    <div>
+      <p style={{ margin: 0, textAlign: 'center', fontFamily: T.display, fontSize: tight ? 20 : 23, fontWeight: 600, color: colors.textPrimary }}>
+        Get the Challenge playbook
+      </p>
+      <p style={{ margin: '6px auto 0', maxWidth: 440, textAlign: 'center', fontFamily: T.body, fontSize: 14, lineHeight: 1.5, color: colors.textMuted }}>
+        Three quick questions. We email the rules, your Day 1 checklist and a link that brings you back here, ready to go.
+      </p>
+      <div style={{ display: 'grid', gap: 16, marginTop: 18 }}>
+        <label>
+          <span style={q}>1. What role are you aiming for in Australia?</span>
+          <input value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Graduate Data Analyst" maxLength={80} autoFocus style={field} />
+        </label>
+        <div>
+          <span style={q}>2. What are your work rights?</span>
+          <div role="radiogroup" aria-label="Work rights" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {KIT_VISAS.map(([code, label]) => {
+              const on = visa === code;
+              return (
+                <button key={code} type="button" role="radio" aria-checked={on} onClick={() => setVisa(on ? '' : code)}
+                  style={{
+                    padding: '8px 13px', borderRadius: 99, cursor: 'pointer',
+                    fontFamily: T.body, fontSize: 13.5, fontWeight: 600,
+                    border: `1px solid ${on ? colors.accentPetrol : colors.borderDefined}`,
+                    background: on ? colors.accentPetrol : colors.bgSurface,
+                    color: on ? '#fff' : colors.textSecondary,
+                  }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <label>
+          <span style={q}>3. Where should we send your Challenge toolkit?</span>
+          <input type="email" inputMode="email" autoComplete="email" value={addr} onChange={e => setAddr(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && state === 'idle') void send(); }}
+            placeholder="you@email.com" style={field} />
+        </label>
+      </div>
+      <button type="button" onClick={() => void send()} disabled={state === 'sending'}
+        style={{
+          width: '100%', marginTop: 18, minHeight: 50, borderRadius: 12, border: 'none', cursor: 'pointer',
+          background: colors.accentPetrol, color: '#fff', fontFamily: T.body, fontSize: 15.5, fontWeight: 700,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+        {state === 'sending' ? <Loader2 size={17} className="animate-spin" /> : <>Send me the playbook <ArrowRight size={16} /></>}
       </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ height: { duration: 0.26, ease: EASE }, opacity: { duration: 0.18 } }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-              {options.map(([key, render], i) => <React.Fragment key={key}>{render(i + 1)}</React.Fragment>)}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <p style={{ margin: '12px 0 0', textAlign: 'center' }}>{backLink('Back to upload')}</p>
+    </div>
+  );
+}
+
+/** Small marks for the cloud sources, drawn rather than fetched. */
+function DriveMark() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden>
+      <path d="M8 3h8l6 10.5-4 7H6l-4-7z" fill="none" />
+      <path d="M8 3l-6 10.5 3 5.2L11 8.3z" fill="#0F9D58" />
+      <path d="M8 3h8l6 10.5h-6L11 8.3z" fill="#FFC107" />
+      <path d="M22 13.5l-3 5.2H5l3-5.2z" fill="#4285F4" />
+    </svg>
+  );
+}
+function DropboxMark() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden fill="#0061FF">
+      <path d="M6 2.5l6 3.8-6 3.8-6-3.8zM18 2.5l6 3.8-6 3.8-6-3.8zM0 13.9l6-3.8 6 3.8-6 3.8zM18 10.1l6 3.8-6 3.8-6-3.8zM6 19l6-3.8 6 3.8-6 3.8z" />
+    </svg>
+  );
+}
+
+/**
+ * Paste the resume as text, for a phone that has the words (in a notes app,
+ * an email, a Google Doc) but no file. Sent as a .txt, which the reader takes
+ * like any other upload.
+ */
+function PasteResume({ onSubmit, onCancel }: { onSubmit: (f: File) => void; onCancel: () => void }) {
+  const [text, setText] = useState('');
+  const short = text.trim().length < 300;
+  return (
+    <div>
+      <textarea value={text} onChange={e => setText(e.target.value)} autoFocus rows={9}
+        placeholder="Paste your whole resume here: your name and contact details, every job, your education and your skills."
+        style={{ ...inputStyle, display: 'block', resize: 'vertical', minHeight: 190, lineHeight: 1.5, fontSize: 14 }} />
+      <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
+        <button type="button" disabled={short}
+          onClick={() => onSubmit(new File([text.trim()], 'pasted-resume.txt', { type: 'text/plain' }))}
+          style={{
+            flex: 1, minHeight: 46, borderRadius: 12, border: 'none', cursor: short ? 'not-allowed' : 'pointer',
+            background: colors.accentPetrol, opacity: short ? 0.5 : 1, color: '#fff', fontFamily: T.body, fontSize: 15, fontWeight: 700,
+          }}>
+          Diagnose my resume
+        </button>
+        <button type="button" onClick={onCancel}
+          style={{ ...quietLinkStyle, background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </div>
+      {short && text.trim().length > 0 && (
+        <p style={{ margin: '8px 0 0', fontFamily: T.body, fontSize: 12.5, color: colors.textMuted }}>Keep going: paste the whole resume, not just a part of it.</p>
+      )}
     </div>
   );
 }
@@ -2133,6 +2187,14 @@ function NoResumeHelp({ tight }: { tight?: boolean }) {
  * the site's usual whisper of an edge disappears against a photo.
  */
 const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
+
+/** The Drive, Dropbox and paste chips inside the dropzone. */
+const sourceChipStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 34,
+  borderRadius: 99, cursor: 'pointer', border: `1px solid ${colors.borderDefined}`,
+  background: colors.bgSurface, color: colors.textSecondary,
+  fontFamily: T.body, fontSize: 13, fontWeight: 600,
+};
 
 /**
  * The one warning colour on the resume screen.
@@ -2970,13 +3032,17 @@ function FindingGroup({ heading, note, items, ticked }: {
 const TESTIMONIAL_CARDS = Array.from({ length: 8 }, (_, i) => `/Assets/testimonials/card_${i + 1}.jpg`);
 
 /**
- * How much white sits over the testimonials. They are proof, not the pitch, so
- * they read as texture behind the upload box rather than something to stop and
- * read. Turn this down to show more of them, up to hide them further. It went
- * up when the centre bloom came out: that gradient used to be doing most of
- * the muting, and without it a bare wash left the cards shouting.
+ * What sits over the testimonials. They are proof, not the pitch, so they read
+ * as texture behind the upload box rather than something to stop and read.
+ *
+ * Dark and soft since the 30 Oct review, not the white wash it was: a white
+ * card on a pale wall blended in, and the grid of faces competed with the one
+ * thing to click. A deep petrol overlay plus a light blur keeps the emotion of
+ * the faces and lets the white card stand forward. Opacity up hides them more.
  */
-const WASH_OPACITY = 0.62;
+const WASH_COLOR = '#0E2128';
+const WASH_OPACITY = 0.6;
+const WASH_BLUR_PX = 2.5;
 
 /**
  * How many times the eight-card run is repeated inside one half of a marquee
@@ -3036,7 +3102,7 @@ function TestimonialWash() {
 
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none', background: colors.bgCanvas }}>
-      <div style={{ position: 'absolute', top: -40, left: 0, right: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ position: 'absolute', top: -40, left: 0, right: 0, display: 'flex', flexDirection: 'column', gap: 18, filter: `blur(${WASH_BLUR_PX}px)` }}>
         {rows.map((row, r) => (
           <div key={r} style={{ display: 'flex', width: 'max-content', gap: 18, marginLeft: r * -84, animation: `agcMarquee${r % 2 === 0 ? 'L' : 'R'} ${MARQUEE_SECONDS + r * MARQUEE_ROW_STEP}s linear infinite` }} className="agc-marquee-row">
             {row.map((src, i) => (
@@ -3052,7 +3118,7 @@ function TestimonialWash() {
           pool of white out into the cards — which is exactly the feathered edge
           the panel now replaces. The panel owns the contrast; this only has to
           keep the marquee quiet. */}
-      <div style={{ position: 'absolute', inset: 0, background: colors.bgSurface, opacity: WASH_OPACITY }} />
+      <div style={{ position: 'absolute', inset: 0, background: WASH_COLOR, opacity: WASH_OPACITY }} />
 
       <style>{`
         @keyframes agcMarqueeL { from { transform: translateX(0); }    to { transform: translateX(-50%); } }

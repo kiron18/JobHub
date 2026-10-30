@@ -1339,21 +1339,48 @@ export async function sendWelcomeDiagnosisEmail(params: {
 }
 
 /**
- * "Finish on your laptop". Asked for on a phone by someone whose resume file is
- * on another device, so it is a link home and the three places a resume usually
- * hides, and nothing else.
+ * The 90-Day Challenge playbook, from the front door's "Don't have your resume
+ * on this device?" form. Asked for by someone whose resume file is somewhere
+ * else, so it is the rules, the Day 1 checklist, a link home and the three
+ * places a resume usually hides. The link carries the role and visa they gave
+ * (both theirs, neither identifying), so the front door can fill them back in.
  */
-export async function sendWelcomeLaterEmail(params: { to: string }): Promise<void> {
+export async function sendWelcomeLaterEmail(params: { to: string; role?: string; visa?: string; visaLabel?: string }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set, skipping welcome later email');
     return;
   }
+  const role = (params.role || '').trim();
+  const link = new URL(`${PUBLIC_APP_URL}/`);
+  link.searchParams.set('src', 'later');
+  if (role) link.searchParams.set('role', role);
+  if (params.visa) link.searchParams.set('visa', params.visa);
+  const sponsorLine = params.visa && ['485', 'student', 'whv', 'skilled'].includes(params.visa)
+    ? [{ p: `On a ${params.visaLabel || 'visa'}? Inside, the visa sponsor list shows which employers have sponsored before, so you can aim at the ones that will.` }]
+    : [];
   const email = {
-    subject: 'Your link to fix your resume',
+    subject: 'Your 90-Day Challenge playbook',
     blocks: [
       { p: 'Hi,' },
-      { p: "Here's the link you asked for. Open it on the computer that has your resume and upload it. You'll get your diagnosis in about a minute, free, no account needed." },
-      { cta: 'Upload my resume', url: `${PUBLIC_APP_URL}/?src=later` },
+      { p: role
+        ? `Here are the rules of the 90-Day Challenge and your Day 1 checklist. When you're at the computer with your resume, the button below takes you straight to Day 1, already aimed at ${role}.`
+        : "Here are the rules of the 90-Day Challenge and your Day 1 checklist. When you're at the computer with your resume, the button below takes you straight to Day 1." },
+      { strong: 'The rules' },
+      { ul: [
+        'Show up for 1 hour a day, every day, for 90 days. Consistency beats bursts.',
+        'Quality over volume. Every application is tailored to the ad, with a follow-up email to the person hiring.',
+        'Reach out to people who can refer you, a few every day. Plenty of roles are filled through someone who knows someone.',
+        'Track every application, so you can see what is working and keep going on the slow days.',
+      ] },
+      { strong: 'Your Day 1 checklist' },
+      { ul: [
+        'Find your resume file. Tips below if it is hiding.',
+        'Upload it for your free diagnosis. It takes about a minute, and no account is needed.',
+        'Answer a few quick questions, and we rebuild your resume for Australian employers.',
+        'Set your daily goal and send your first application.',
+      ] },
+      ...sponsorLine,
+      { cta: 'Start Day 1', url: link.toString() },
       { p: "Can't find the file? It's usually in one of three places:" },
       { ul: [
         'Your sent email, attached to an application you sent before. Search "resume" or "CV".',

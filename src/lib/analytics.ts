@@ -270,7 +270,7 @@ export function trackUploadPickerOpened() {
 }
 
 /** A file was chosen. `method` says how; picker opens minus these is cancels. */
-export function trackResumeFileSelected(method: 'browse' | 'drop', file: File) {
+export function trackResumeFileSelected(method: 'browse' | 'drop' | 'paste', file: File) {
   posthog.capture('resume_file_selected', {
     method,
     file_ext: (file.name.split('.').pop() || '').toLowerCase(),

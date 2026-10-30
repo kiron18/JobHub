@@ -137,3 +137,22 @@ describe('Phase 2 Acceptance Gate', () => {
         expect(totalViolations).toBe(5);
     });
 });
+
+describe('SlopMonster tells', () => {
+    const banned = (text: string) => checkStyle(text).violations.filter(v => v.type === 'banned-phrase');
+
+    it('catches the "not just X, but Y" construction, contracted or not', () => {
+        expect(banned('This role is not just about reporting, but about shaping decisions.')).toHaveLength(1);
+        expect(banned("I don't just build dashboards, but explain them.")).toHaveLength(1);
+    });
+
+    it('catches the marketing vocabulary', () => {
+        expect(banned('Delivered a seamless migration with meticulous testing.')).toHaveLength(2);
+        expect(banned('I thrive in a fast-paced environment.')).toHaveLength(1);
+    });
+
+    it('leaves plain resume language and employer names alone', () => {
+        expect(banned('Streamlined onboarding at Elevate Education and Beacon Health, cutting setup time by 30%.')).toHaveLength(0);
+        expect(banned('Not all reports were automated, but most were.')).toHaveLength(0);
+    });
+});

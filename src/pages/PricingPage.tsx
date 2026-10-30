@@ -81,6 +81,8 @@ const PLAN_KEY = 'premium';
  * The guard against a double click is `busy`, not the words.
  */
 const CTA_LABEL = 'I want to commit';
+/** Signed out the button starts the free days instead, so it says so. */
+const STRANGER_CTA_LABEL = 'Start free with my resume';
 
 /** The eight client photos with their own message on them. Same set ProofTicker uses. */
 const FACES = Array.from({ length: 8 }, (_, i) => `/Assets/testimonials/card_${i + 1}.jpg`);
@@ -104,15 +106,17 @@ export function PricingPage() {
 
   async function startCheckout() {
     if (busy.current) return;
+    // A stranger starts where everyone starts, with their resume and the free
+    // days. Paying first would make a Stripe customer with no account to land in.
+    if (!user) {
+      navigate('/');
+      return;
+    }
     if (PRICING_PAYMENT_LINK) {
       const url = new URL(PAYMENT_LINK);
       if (user?.email) url.searchParams.set('prefilled_email', user.email);
       if (user?.id) url.searchParams.set('client_reference_id', user.id);
       window.location.href = url.toString();
-      return;
-    }
-    if (!user) {
-      navigate('/auth?next=/pricing');
       return;
     }
     busy.current = true;
@@ -159,7 +163,7 @@ export function PricingPage() {
           }}
           style={{ fontSize: 13, fontWeight: 600, color: colors.textMuted, textDecoration: 'none' }}
         >
-          Back to dashboard
+          {user ? 'Back to dashboard' : 'Back home'}
         </a>
       </div>
 
@@ -202,7 +206,7 @@ export function PricingPage() {
           </span>
         </h1>
 
-        <PrimaryCTA label={CTA_LABEL} onClick={startCheckout} />
+        <PrimaryCTA label={user ? CTA_LABEL : STRANGER_CTA_LABEL} onClick={startCheckout} />
 
         <p style={{ fontSize: '1.0625rem', fontWeight: 600, color: colors.textPrimary, margin: '22px 0 0' }}>
           {PRICE} a month for 3 months ({TOTAL} in total). Then access for the rest of the year, included.
@@ -217,7 +221,8 @@ export function PricingPage() {
           }}
         >
           You will be charged {PRICE} on a monthly basis for the first three months, after which payment stops but
-          you still have access to the platform for a year. Paying here starts your plan today, with no trial.
+          you still have access to the platform for a year.{' '}
+          {user ? 'Paying here starts your plan today, with no trial.' : 'Start with 3 free days, no card. Add a card for 4 more before your first payment.'}
         </p>
 
         <ul style={{ listStyle: 'none', padding: 0, margin: '32px 0 0', display: 'grid', gap: 10, textAlign: 'left', maxWidth: 460 }}>
@@ -265,7 +270,7 @@ export function PricingPage() {
         </div>
 
         <div style={{ marginTop: 40 }}>
-          <PrimaryCTA label={CTA_LABEL} onClick={startCheckout} />
+          <PrimaryCTA label={user ? CTA_LABEL : STRANGER_CTA_LABEL} onClick={startCheckout} />
         </div>
 
         <style>{`
