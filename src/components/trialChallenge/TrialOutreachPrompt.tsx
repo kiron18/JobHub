@@ -1,4 +1,4 @@
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { useProfile } from '../../hooks/useProfile';
 
 const C = warm.colors;
@@ -42,7 +42,7 @@ export function TrialOutreachPrompt() {
         href={searchUrl} target="_blank" rel="noopener noreferrer"
         style={{
           display: 'block', textAlign: 'center', width: '100%', padding: 11, borderRadius: 10,
-          background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+          ...ACTION, fontSize: 14, fontWeight: 700, textDecoration: 'none',
         }}
       >
         Open this search on LinkedIn

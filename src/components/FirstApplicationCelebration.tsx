@@ -4,7 +4,7 @@ import { X, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTrialChallengeState } from '../lib/trialChallenge';
 
@@ -196,7 +196,7 @@ export function FirstApplicationCelebration() {
 
             {/* CTA */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <motion.button
+              <motion.button className="agc-action"
                 onClick={sendAnother}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
@@ -206,8 +206,7 @@ export function FirstApplicationCelebration() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
-                  background: warm.colors.accentPetrol,
-                  color: warm.colors.textOnDeep,
+                  ...ACTION,
                   borderRadius: 14,
                   padding: '15px 24px',
                   fontSize: 15,

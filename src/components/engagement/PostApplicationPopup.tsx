@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, Check, X as XIcon, Hand } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { haptic } from '../../lib/feedback';
 import { applauseFor } from '../../lib/applause';
@@ -188,11 +188,11 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 <li>Reconnect with your university professors</li>
                 <li>Record a one-minute video to attach to cover letters and stand out</li>
               </ul>
-              <button
+              <button className="agc-action"
                 onClick={onClose}
                 style={{
                   width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
-                  background: warm.colors.accentPetrol, color: '#fff',
+                  ...ACTION,
                   fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 }}
               >

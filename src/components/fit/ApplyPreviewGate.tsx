@@ -24,7 +24,7 @@ import ReactMarkdown from 'react-markdown';
 import { X, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { type as landingType } from '../landing/tokens';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit, trackPaywallViewed, trackApplyStarted } from '../../lib/analytics';
 import { SALES_PAGE_URL } from '../../lib/salesPage';
@@ -829,7 +829,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 disabled={loading}
                 style={{
                   width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 9, padding: '15px clamp(18px, 5vw, 24px)', background: C.accentPetrol, color: C.textOnDeep,
+                  gap: 9, padding: '15px clamp(18px, 5vw, 24px)', ...ACTION,
                   border: 'none', borderRadius: warm.radius.button, fontSize: 16, fontWeight: 700,
                   fontFamily: 'inherit', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
                   boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)',

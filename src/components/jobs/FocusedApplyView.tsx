@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { DailyProgressBar } from './DailyProgressBar';
 import type { JobFeedItem } from './JobCard';
 
@@ -317,16 +317,14 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
                 {hydrating ? 'Loading…' : 'View'}
               </button>
             ) : (
-              <button onClick={onApply} disabled={applying} style={{
+              <button className="agc-action" onClick={onApply} disabled={applying} style={{
                 flex: 1,
                 padding: '12px 18px',
                 borderRadius: 12,
-                border: `1px solid ${warm.colors.accentPetrol}`,
                 cursor: applying ? 'wait' : 'pointer',
                 fontWeight: 700,
                 fontSize: 14,
-                background: warm.colors.accentPetrol,
-                color: '#fff',
+                ...ACTION,
                 opacity: applying ? 0.7 : 1,
                 transition: 'all 150ms',
               }} onMouseEnter={(e) => {

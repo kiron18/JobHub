@@ -15,6 +15,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { Check, ArrowRight, Compass, MessageSquare, X, Upload } from 'lucide-react';
 import { colors, type as typeTokens } from '../components/landing/tokens';
 import { trackBookCallCtaClicked } from '../lib/analytics';
+import { ACTION } from '../lib/theme/warmTokens';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
@@ -63,7 +64,7 @@ function BookButton({ position, label, small, onClick }: { position: 'hero' | 'm
     <button
       onClick={handle}
       style={{
-        background: colors.accentPetrol, color: colors.textOnDeep,
+        ...ACTION,
         padding: small ? '12px 24px' : '16px 32px', borderRadius: 10, border: 'none',
         fontWeight: 600, fontSize: small ? '0.9375rem' : '1.0625rem', fontFamily: typeTokens.body,
         letterSpacing: '-0.005em', cursor: 'pointer', lineHeight: 1, whiteSpace: 'nowrap',
@@ -226,7 +227,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
                 <button
                   type="submit"
                   style={{
-                    flex: 1, background: colors.accentPetrol, color: colors.textOnDeep,
+                    flex: 1, ...ACTION,
                     padding: '13px 20px', borderRadius: 10, border: 'none', fontWeight: 600,
                     fontSize: '1rem', fontFamily: typeTokens.body, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,

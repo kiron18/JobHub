@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame } from 'lucide-react';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { haptic } from '../../lib/feedback';
 import { closeoutLineFor } from '../../lib/closeoutLines';
@@ -128,11 +128,11 @@ export function DailyCloseOut() {
               </div>
             )}
             <div>
-              <button
+              <button className="agc-action"
                 onClick={dismiss}
                 style={{
                   padding: '9px 22px', borderRadius: 10, fontSize: 15, fontWeight: 700, border: 'none',
-                  cursor: 'pointer', background: warm.colors.accentPetrol, color: 'white',
+                  cursor: 'pointer', ...ACTION,
                 }}
               >
                 See you tomorrow

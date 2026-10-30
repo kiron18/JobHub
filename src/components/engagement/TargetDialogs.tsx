@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Handshake, RotateCcw } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, DUR, t, prefersReducedMotion } from '../../lib/theme/motion';
 import { TARGET_MIN, TARGET_MAX } from '../../lib/dailyTarget';
 
@@ -101,10 +101,10 @@ const Shell: React.FC<ShellProps> = ({
                 type="button"
                 onClick={onConfirm}
                 disabled={busy}
-                className="tap-target"
+                className="tap-target agc-action"
                 style={{
                   width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
-                  background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
+                  ...ACTION,
                   ...warm.popup.body, fontSize: 17, fontWeight: warm.weight.bold,
                   cursor: busy ? 'progress' : 'pointer', opacity: busy ? 0.75 : 1,
                   transition: t(['background-color', 'opacity'], DUR.fast),

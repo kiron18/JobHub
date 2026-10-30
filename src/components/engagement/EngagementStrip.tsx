@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MorningCommit } from './MorningCommit';
 import { ChallengeIntro } from './ChallengeIntro';
 import { Modal } from '../shared/Modal';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import api from '../../lib/api';
 import { useDailyTarget } from '../../hooks/useDailyTarget';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -249,9 +249,9 @@ export function EngagementStrip() {
             >
               Keep looking
             </button>
-            <button
+            <button className="agc-action"
               onClick={() => { setSwapDialog(false); live.swap.mutate(); }}
-              style={{ padding: '11px 16px', borderRadius: 10, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '11px 16px', borderRadius: 10, border: 'none', ...ACTION, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
             >
               Switch to outreach
             </button>

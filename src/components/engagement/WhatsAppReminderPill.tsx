@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Modal } from '../shared/Modal';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useWhatsappOptIn } from '../../hooks/useWhatsappOptIn';
 import { WhatsAppOptInBody } from '../tracker/WhatsAppCoachCard';
@@ -92,12 +92,12 @@ export function WhatsAppReminderPill() {
             <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.6, color: warm.colors.textSecondary }}>
               Your first check-in arrives at the next 8am or 6pm, Sydney time. Answer each one, it's what makes the plan stick.
             </p>
-            <button
+            <button className="agc-action"
               type="button"
               onClick={() => setOpen(false)}
               style={{
                 padding: '11px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: warm.colors.accentPetrol, color: '#fff', fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
+                ...ACTION, fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
               }}
             >
               Done

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import type { BannerConfig } from './types';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 
 const BANNER_W = 1584;
 const BANNER_H = 396;
@@ -191,13 +191,13 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textMuted }}>Banner Editor</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
+          <button className="agc-action"
             onClick={handleExport}
             disabled={exporting}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', borderRadius: 8, border: 'none',
-              background: warm.colors.accentPetrol, color: 'white', fontWeight: 700, fontSize: 13,
+              ...ACTION, fontWeight: 700, fontSize: 13,
               cursor: exporting ? 'default' : 'pointer',
             }}
           >

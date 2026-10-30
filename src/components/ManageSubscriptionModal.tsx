@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { BOOKING_URL } from '../pages/BookCallPage';
 import {
   trackManageSubscriptionOpened,
@@ -227,7 +227,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                   ))}
                 </div>
 
-                <button
+                <button className="agc-action"
                   onClick={() => {
                     trackCancellationReachOutClicked();
                     window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
@@ -235,7 +235,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                   style={{
                     width: '100%', marginTop: 20, padding: '13px 16px',
                     borderRadius: 10, border: 'none',
-                    background: warm.colors.accentPetrol, color: '#fff',
+                    ...ACTION,
                     fontSize: 14, fontWeight: 700, cursor: 'pointer',
                     minHeight: 44,
                   }}

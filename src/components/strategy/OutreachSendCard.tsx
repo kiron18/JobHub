@@ -18,7 +18,7 @@
 import { useState } from 'react';
 import { Check, Copy, ExternalLink, Info, Linkedin, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { LINKEDIN_NOTE_LIMIT } from '../../lib/outreachFill';
 import {
@@ -224,13 +224,12 @@ export default function OutreachSendCard({
                 )}
 
                 {/* The one obvious action, directly under what it sends. */}
-                <button
+                <button className="agc-action"
                     onClick={handleSend}
                     style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         width: '100%', minHeight: 48, padding: '12px 18px',
-                        fontSize: 15, fontWeight: 700,
-                        color: warm.colors.textOnDeep, background: warm.colors.accentPetrol,
+                        fontSize: 15, fontWeight: 700, ...ACTION,
                         border: 'none', borderRadius: 10, cursor: 'pointer',
                     }}
                 >

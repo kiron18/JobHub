@@ -364,3 +364,22 @@ html {
     overscroll-behavior-y: contain;
   }
 }
+
+
+/* ── The next-step button (warmTokens ACTION) ─────────────────────────────
+   One per screen. Hover darkens and lifts, press sinks, keyboard focus gets a
+   thick ring. `agc-action-live` adds a slow breathing glow, for the sticky
+   action bar only, and never for anyone who has asked for reduced motion. */
+.agc-action { transition: background-color .15s ease, transform .12s ease, box-shadow .15s ease, filter .15s ease; cursor: pointer; }
+.agc-action:hover:not(:disabled) { background-color: #EDA912 !important; transform: translateY(-1px); }
+.agc-action:active:not(:disabled) { background-color: #D9970A !important; transform: translateY(1px); }
+.agc-action:focus-visible { outline: 3px solid rgba(217,151,10,0.55); outline-offset: 3px; }
+.agc-action:disabled { filter: grayscale(0.55) opacity(0.55); cursor: not-allowed; box-shadow: none !important; }
+@keyframes agc-action-breathe {
+  0%, 100% { box-shadow: 0 1px 0 rgba(255,255,255,0.45) inset, 0 10px 22px -8px rgba(217,151,10,0.65), 0 0 0 0 rgba(245,183,49,0.45); }
+  50%      { box-shadow: 0 1px 0 rgba(255,255,255,0.45) inset, 0 10px 22px -8px rgba(217,151,10,0.65), 0 0 0 9px rgba(245,183,49,0); }
+}
+.agc-action-live:not(:disabled) { animation: agc-action-breathe 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .agc-action-live { animation: none !important; } .agc-action { transition: none; } }
+.agc-secondary { transition: border-color .15s ease, background-color .15s ease; cursor: pointer; }
+.agc-secondary:hover:not(:disabled) { border-color: #1257C4 !important; background-color: #EEF3FD !important; }

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Copy, Check, X, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { PRE_SEND_WARNING } from '../../lib/emailTemplates';
 import { useFollowUpEmail } from '../../lib/useFollowUpEmail';
 
@@ -153,7 +153,7 @@ function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
             </p>
           </div>
 
-          <button
+          <button className="agc-action"
             onClick={handleCopy}
             style={{
               display: 'flex',
@@ -164,8 +164,7 @@ function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
               padding: '10px 0',
               borderRadius: 10,
               border: 'none',
-              background: warm.colors.accentPetrol,
-              color: 'white',
+              ...ACTION,
               fontSize: 14,
               fontWeight: 700,
               cursor: 'pointer',
@@ -324,7 +323,7 @@ export function StaleApplicationsCard() {
                     {job.company} · sent {days} day{days === 1 ? '' : 's'} ago
                   </p>
                 </div>
-                <button
+                <button className="agc-action"
                   onClick={() => setSelectedJob(job)}
                   style={{
                     display: 'inline-flex',
@@ -338,9 +337,7 @@ export function StaleApplicationsCard() {
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: `1px solid ${warm.colors.accentPetrol}`,
-                    background: warm.colors.accentPetrol,
-                    color: 'white',
+                    ...ACTION,
                     flexShrink: 0,
                   }}
                 >

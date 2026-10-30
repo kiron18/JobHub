@@ -1,4 +1,5 @@
 import { colors, type as typeTokens } from '../tokens';
+import { ACTION } from '../../../lib/theme/warmTokens';
 
 interface PrimaryCTAProps {
   label: string;
@@ -15,8 +16,7 @@ export function PrimaryCTA({ label, onClick, small }: PrimaryCTAProps) {
     <button
       onClick={onClick}
       style={{
-        background: colors.accentPetrol,
-        color: colors.textOnDeep,
+        ...ACTION,
         padding: `${padY} ${padX}`,
         borderRadius: 10,
         border: 'none',

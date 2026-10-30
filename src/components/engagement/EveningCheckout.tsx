@@ -4,7 +4,7 @@ import { Check, Moon, Flame, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { Modal } from '../shared/Modal';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 
 /* ── EveningCheckout ───────────────────────────────────────────────────
    "End my day": the close of a session (Kiron, 2026-09-29). Always one tap
@@ -144,9 +144,9 @@ export function EveningCheckout({ open, onClose }: { open: boolean; onClose: () 
               ? <>First thing tomorrow: <strong style={{ color: warm.colors.textPrimary }}>{firstPlan.toLowerCase()}</strong>. It's written down now, so it's already half done.</>
               : 'Rest properly tonight. Tomorrow starts with a number.'}
           </p>
-          <button
+          <button className="agc-action"
             onClick={onClose}
-            style={{ width: '100%', padding: '14px 18px', borderRadius: 12, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer' }}
+            style={{ width: '100%', padding: '14px 18px', borderRadius: 12, border: 'none', ...ACTION, fontSize: 17, fontWeight: 700, cursor: 'pointer' }}
           >
             Done
           </button>
@@ -167,12 +167,12 @@ export function EveningCheckout({ open, onClose }: { open: boolean; onClose: () 
             ))}
           </div>
 
-          <button
+          <button className="agc-action"
             onClick={() => save.mutate()}
             disabled={save.isPending || (outcomes.length === 0 && tomorrow.length === 0)}
             style={{
               marginTop: 22, width: '100%', padding: '14px 18px', borderRadius: 12, border: 'none',
-              background: warm.colors.accentPetrol, color: '#fff', fontSize: 17, fontWeight: 700,
+              ...ACTION, fontSize: 17, fontWeight: 700,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               opacity: outcomes.length === 0 && tomorrow.length === 0 ? 0.5 : 1,
             }}

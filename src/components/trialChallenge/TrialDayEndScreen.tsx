@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { UpgradeModal } from '../UpgradeModal';
 import { TrialDayProgress } from './TrialDayProgress';
 
@@ -60,7 +60,7 @@ export function TrialDayEndScreen({ variant, currentDay, appliedThisWindow, mini
             disabled={resetting}
             style={{
               width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none',
-              background: C.accentPetrol, color: '#fff', fontSize: 16, fontWeight: 700,
+              ...ACTION, fontSize: 16, fontWeight: 700,
               cursor: resetting ? 'default' : 'pointer', opacity: resetting ? 0.7 : 1,
             }}
           >
@@ -102,7 +102,7 @@ export function TrialDayEndScreen({ variant, currentDay, appliedThisWindow, mini
 
           <button
             onClick={() => setShowUpgrade(true)}
-            style={{ width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none', background: C.accentPetrol, color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
+            style={{ width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none', ...ACTION, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}
           >
             See how to keep going
           </button>

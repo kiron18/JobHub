@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Play } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { prefersReducedMotion } from '../../lib/theme/motion';
 import { CHALLENGE_INTRO as COPY } from '../../config/challengeIntro';
 import { trackChallengeIntroVideoPlayed } from '../../lib/analytics';
@@ -108,12 +108,12 @@ export function ChallengeIntro({ busy, onStart }: { busy: boolean; onStart: () =
           )}
         </div>
 
-        <button
+        <button className="agc-action"
           onClick={onStart}
           disabled={busy}
           style={{
             marginTop: 24, width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
-            background: warm.colors.accentPetrol, color: '#fff', cursor: busy ? 'default' : 'pointer',
+            ...ACTION, cursor: busy ? 'default' : 'pointer',
             fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >

@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { jobBlurb } from '../../lib/jobBlurb';
 import type { JobFeedItem } from '../jobs/JobCard';
 
@@ -38,13 +38,13 @@ export function JobStreamCard({ job, onApply, applying }: JobStreamCardProps) {
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-        <button
+        <button className="agc-action"
           onClick={() => onApply(job)}
           disabled={applying}
           style={{
             fontSize: 13.5, fontWeight: 700, padding: '9px 20px', borderRadius: 10,
             border: 'none', cursor: applying ? 'wait' : 'pointer',
-            background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
+            ...ACTION,
             opacity: applying ? 0.7 : 1,
           }}
         >

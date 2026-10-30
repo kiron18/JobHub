@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type LucideIcon, Lightbulb } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { pickFact } from '../../lib/engagementContent';
 
@@ -99,11 +99,11 @@ export const MomentSplash: React.FC<MomentSplashProps> = ({
               </div>
             )}
 
-            <button
+            <button className="agc-action"
               onClick={onContinue}
               style={{
                 width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none',
-                background: warm.colors.accentPetrol, color: '#fff', fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                ...ACTION, fontSize: 18, fontWeight: 700, cursor: 'pointer',
               }}
             >
               {ctaLabel}

@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUp, Check } from 'lucide-react';
 import { colors, type as T } from '../landing/tokens';
 import { Eyebrow } from '../landing/shared/Eyebrow';
 import { MockWindow, MockFitReport, MockTracker } from '../landing/pricing/AppMock';
+import { ACTION } from '../../lib/theme/warmTokens';
 
 /**
  * The "Find out how" article, shown under the front door's fold.
@@ -385,7 +386,7 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 9, minHeight: 50, padding: '0 28px',
               borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: colors.accentPetrol, color: colors.textOnDeep,
+              ...ACTION,
               fontFamily: T.body, fontSize: 16, fontWeight: 600,
               boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
               transition: 'background .18s ease',

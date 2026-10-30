@@ -21,7 +21,7 @@ import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsC
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import { ResourcesUpdateNudge } from '../components/ResourcesUpdateNudge';
 import type { JobFeedItem } from '../components/jobs/JobCard';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
@@ -54,9 +54,10 @@ const warmT = {
   inputText: warm.colors.textPrimary,
   accentSecondary: warm.colors.accentPetrol,
   accentSuccess: warm.colors.success,
-  btnBg: warm.colors.accentPetrol,
-  btnText: warm.colors.textOnDeep,
-  btnShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+  // The next step is gold (warmTokens ACTION). Only buttons read these.
+  btnBg: warm.colors.action,
+  btnText: warm.colors.actionInk,
+  btnShadow: warm.shadow.action,
 };
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
@@ -333,10 +334,13 @@ function AnalysisHeroCard() {
         <div
             style={{
                 background: warmT.card,
-                border: `1px solid ${warmT.cardBorder}`,
+                /* The one card on the dashboard the eye must land on: the job
+                   box is where every application starts. A gold edge and the
+                   focus shadow set it apart from every card around it. */
+                border: `2px solid ${warm.colors.action}`,
                 borderRadius: 20,
-                padding: 32,
-                boxShadow: warmT.cardShadow,
+                padding: isMobile ? 18 : 32,
+                boxShadow: warm.shadow.focus,
             }}
         >
             {capMessage && (
@@ -359,6 +363,13 @@ function AnalysisHeroCard() {
                 the paste. Underneath it was an explanation of a mistake someone
                 had already made. Only worth showing to someone typing a
                 description — a link already carries the employer. */}
+            {/* Names the one job of this card, so nobody has to work it out. */}
+            <h2 style={{ margin: '0 0 4px', fontSize: isMobile ? 21 : 24, fontWeight: 700, letterSpacing: '-0.015em', color: warmT.text }}>
+                Start your next application
+            </h2>
+            <p style={{ margin: '0 0 12px', fontSize: 14.5, lineHeight: 1.5, color: warmT.textMuted }}>
+                Paste a job ad. We check the fit in about ten seconds, then write the whole application.
+            </p>
             <div style={{ marginBottom: 14 }}>
                 {!isLink && <HowToCopyJobAd />}
             </div>
@@ -412,7 +423,7 @@ function AnalysisHeroCard() {
                 style={{
                     width: '100%',
                     padding: '14px 16px',
-                    fontSize: 14,
+                    fontSize: 15,
                     fontFamily: 'inherit',
                     lineHeight: 1.6,
                     color: warmT.inputText,
@@ -478,6 +489,7 @@ function AnalysisHeroCard() {
                                 role: missingEmployer.role,
                             })}
                             disabled={!missingEmployer.typed.trim()}
+                            className="agc-action"
                             style={{
                                 padding: '9px 16px', fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
                                 color: warmT.btnText, background: warmT.btnBg, border: 'none', borderRadius: 9,
@@ -574,24 +586,22 @@ function AnalysisHeroCard() {
                     data-process-step="analyse"
                     onClick={handleAnalyse}
                     disabled={!canSubmit}
+                    className={canSubmit ? 'agc-action agc-action-live' : 'agc-action'}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         minWidth: 0,
-                        gap: 6,
-                        padding: '12px 22px',
-                        fontSize: 14,
+                        gap: 8,
+                        padding: '14px 28px',
+                        minHeight: 50,
+                        fontSize: 15.5,
                         fontWeight: 700,
                         letterSpacing: '-0.01em',
-                        color: warmT.btnText,
-                        background: canSubmit ? warmT.btnBg : `${warm.colors.accentPetrol}80`,
+                        ...ACTION,
                         border: 'none',
                         borderRadius: 12,
                         cursor: canSubmit ? 'pointer' : analysing ? 'wait' : 'not-allowed',
-                        opacity: canSubmit ? 1 : 0.6,
-                        boxShadow: canSubmit ? warmT.btnShadow : 'none',
-                        transition: 'opacity 200ms, background 200ms',
                     }}
                 >
                     {analysing ? (
@@ -758,6 +768,14 @@ export function StrategyHub() {
             <DimRegion>
                 <HubHeader profile={profile} />
 
+                {/* Paste/Apply section — the only way a job enters the flow.
+                    First, above the streak and the ritual (30 Oct 2026): it is
+                    the one thing to do on this screen, and on a phone it used
+                    to start at the bottom edge of the first screen. */}
+                <DimTarget style={{ marginBottom: 40 }}>
+                    <AnalysisHeroCard />
+                </DimTarget>
+
                 {/*
                     One centred status line: how today is going, the goal, and
                     the week behind it. The bar used to run the full width of the
@@ -765,14 +783,9 @@ export function StrategyHub() {
                     progress meter on a file download. Short and centred, with
                     the week beside it, it reads as a scoreboard instead.
                 */}
-                <DimPeer>
+                <DimPeer style={{ marginBottom: 32 }}>
                     <EngagementStrip />
                 </DimPeer>
-
-                {/* Paste/Apply section — the only way a job enters the flow */}
-                <DimTarget style={{ marginBottom: 40 }}>
-                    <AnalysisHeroCard />
-                </DimTarget>
 
                 {/* CoherenceCard (story health) removed per user request 2026-06-08 */}
                 {SHOW_DASHBOARD_INSIGHTS && (

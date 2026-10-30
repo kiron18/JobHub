@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check, X } from 'lucide-react';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 interface Question {
   achievementId: string;
@@ -171,12 +171,12 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
               }}
             />
             <div style={{ display: 'flex', gap: 12, marginTop: 14, alignItems: 'center' }}>
-              <button
+              <button className="agc-action"
                 onClick={submitAnswer}
                 disabled={busy || !answer.trim()}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: warm.colors.accentPetrol, color: '#fff',
+                  ...ACTION,
                   border: 'none', borderRadius: 10, padding: '10px 18px',
                   fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer',
                   opacity: (busy || !answer.trim()) ? 0.5 : 1,

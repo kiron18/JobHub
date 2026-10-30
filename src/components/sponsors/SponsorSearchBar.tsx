@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { colors, type } from '../landing/tokens';
+import { ACTION } from '../../lib/theme/warmTokens';
 
 interface Props {
   onSearch: (q: string) => void;
@@ -64,8 +65,7 @@ export function SponsorSearchBar({ onSearch, defaultValue = '' }: Props) {
           style={{
             padding: '14px 24px',
             border: 'none',
-            background: colors.accentPetrol,
-            color: colors.textOnDeep,
+            ...ACTION,
             fontSize: 14,
             fontWeight: 700,
             fontFamily: type.body,

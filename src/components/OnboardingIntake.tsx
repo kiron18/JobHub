@@ -231,13 +231,14 @@ function PrimaryButton({ onClick, disabled, loading, label }: { onClick: () => v
     <motion.button onClick={onClick} disabled={isDisabled}
       style={{
         flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none',
-        background: warmT.btnBg, color: warmT.btnText, fontWeight: 600, fontSize: 15,
+        // The next step is gold (warmTokens ACTION).
+        background: warm.colors.action, color: warm.colors.actionInk, fontWeight: 700, fontSize: 15.5,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
-        opacity: isDisabled ? (loading ? 0.7 : 0.3) : 1,
-        boxShadow: isDisabled ? 'none' : warmT.btnShadow,
+        opacity: isDisabled ? (loading ? 0.7 : 0.35) : 1,
+        boxShadow: isDisabled ? 'none' : warm.shadow.action,
         transition: 'opacity 0.2s, box-shadow 0.2s', fontFamily: 'inherit', letterSpacing: '-0.01em',
       }}
-      whileHover={!isDisabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.12)' } : {}}
+      whileHover={!isDisabled ? { scale: 1.02 } : {}}
       whileTap={!isDisabled ? { scale: 0.97 } : {}}
     >
       {loading ? 'Building your diagnosis…' : label}

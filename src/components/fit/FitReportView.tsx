@@ -20,7 +20,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronUp, Clock, Info, Search, X } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
 const C = warm.colors;
@@ -201,16 +201,15 @@ function PrimaryButton({ onClick, href, children }: {
 }) {
   const style: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    padding: '14px 24px',
-    background: C.accentPetrol, color: C.textOnDeep,
+    padding: '15px 26px', minHeight: 52,
+    ...ACTION,
     border: 'none', borderRadius: warm.radius.button,
-    fontSize: 15, fontWeight: 700, cursor: 'pointer',
+    fontSize: 16, fontWeight: 700,
     textDecoration: 'none', fontFamily: 'inherit',
-    boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)',
   };
   return href
-    ? <a href={href} target="_blank" rel="noopener noreferrer" style={style}>{children}</a>
-    : <button type="button" onClick={onClick} style={style}>{children}</button>;
+    ? <a className="agc-action" href={href} target="_blank" rel="noopener noreferrer" style={style}>{children}</a>
+    : <button className="agc-action" type="button" onClick={onClick} style={style}>{children}</button>;
 }
 
 /**
@@ -441,13 +440,22 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
         <MaskedContactCapture domain={report.maskedContactDomain} onSave={onSaveContactEmail} />
       )}
 
-      {/* The answer, and only the answer. */}
+      {/*
+        The answer and the next step, as ONE card, lifted off the page (30 Oct
+        2026). The button used to sit under the reasons and the reasoning, a
+        full screen below the fold, so the one thing to do next was the last
+        thing anyone reached. Now the verdict and the gold button are what the
+        eye lands on, and the evidence is underneath for anyone who wants it.
+      */}
+      <div style={{
+        borderRadius: 18, overflow: 'hidden', background: C.bgSurface,
+        border: `1px solid ${positive ? 'rgba(42,157,111,0.35)' : C.borderDefined}`,
+        boxShadow: warm.shadow.focus,
+      }}>
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: 14,
-        padding: '18px 20px',
-        background: positive ? 'rgba(42,157,111,0.07)' : C.bgAlt,
-        border: `1px solid ${positive ? 'rgba(42,157,111,0.28)' : C.borderDefined}`,
-        borderRadius: warm.radius.card,
+        padding: isMobile ? '16px 14px' : '20px 24px',
+        background: positive ? 'rgba(42,157,111,0.08)' : C.bgAlt,
       }}>
         <span style={{
           flexShrink: 0, marginTop: 2,
@@ -470,83 +478,14 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
           </span>
         </span>
       </div>
-
-      {/*
-        What the ad requires on work rights. It sits above the verdict because
-        it is a fact about the job, not a judgement on them, and it is never
-        allowed to move the number: the evaluator is told to ignore the topic.
-        We state it and let them decide.
-      */}
-      {report.workRights && <Notice>{report.workRights}</Notice>}
-
-      {/*
-        Sits beside work rights and plays by the same rules: a fact about the
-        ad, never a judgement on them, and forbidden from moving the verdict or
-        the next step. It exists because the arithmetic and the advice can be
-        both right and unhelpful at once. An employer really will screen out
-        someone far past the ask, and a first Australian role below your level
-        really is how a lot of people get their local history started. The
-        report keeps its answer; this adds what the answer cannot see.
-      */}
-      {report.seniority && <Notice>{report.seniority}</Notice>}
-
-      {/* The evidence leads, because it is the part that can be read at a
-          glance. Two columns where there is room for two, one where there is
-          not — side by side at 300px each column is about four words wide. */}
-      <div style={{ display: 'flex', gap: isMobile ? 22 : 32, flexWrap: 'wrap' }}>
-        <Evidence
-          icon={<Check size={13} strokeWidth={3} />}
-          tone={C.success}
-          heading="Why"
-          items={report.youHave.slice(0, MAX_REASONS)}
-        />
-        <Evidence
-          icon={<X size={13} strokeWidth={3} />}
-          tone={C.accentGold}
-          heading="What is against you"
-          items={report.missing.slice(0, MAX_REASONS)}
-        />
-      </div>
-
-      {/* The model's own words. The whole report in a paragraph, and on a phone
-          a paragraph is the shape that reads worst, so it opens on request. */}
-      <div>
-        {isMobile && (
-          <button
-            type="button"
-            onClick={() => setWhyOpen((v) => !v)}
-            aria-expanded={whyOpen}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              width: '100%', minHeight: 44, padding: 0,
-              background: 'none', border: 'none', cursor: 'pointer',
-              textAlign: 'left', fontFamily: 'inherit',
-              fontSize: 14, fontWeight: 700, color: C.accentPetrol,
-            }}
-          >
-            {whyOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            {whyOpen ? 'Hide the reasoning' : 'Read the full reasoning'}
-          </button>
-        )}
-        {(!isMobile || whyOpen) && (
-          <p style={{
-            margin: isMobile ? '6px 0 0' : 0,
-            fontSize: isMobile ? 15 : 16, lineHeight: 1.65, color: C.textPrimary,
-          }}>
-            {report.verdict}
-          </p>
-        )}
-      </div>
-
       {/* The next step. One button. */}
       <div style={{
         position: 'relative',
         /* 24 a side inside a page that already has its own gutter leaves this
            copy about 280px to wrap in. See warm.measure. */
-        padding: isMobile ? '18px 14px' : 24,
-        background: C.bgAlt,
-        border: `1px solid ${C.borderWhisper}`,
-        borderRadius: warm.radius.card,
+        padding: isMobile ? '16px 14px 18px' : '20px 24px 24px',
+        background: C.bgSurface,
+        borderTop: `1px solid ${C.borderWhisper}`,
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
         {promoteApplying ? (
@@ -690,6 +629,75 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
               </button>
             </div>
           </>
+        )}
+      </div>
+
+      </div>
+
+      {/*
+        What the ad requires on work rights. It sits above the verdict because
+        it is a fact about the job, not a judgement on them, and it is never
+        allowed to move the number: the evaluator is told to ignore the topic.
+        We state it and let them decide.
+      */}
+      {report.workRights && <Notice>{report.workRights}</Notice>}
+
+      {/*
+        Sits beside work rights and plays by the same rules: a fact about the
+        ad, never a judgement on them, and forbidden from moving the verdict or
+        the next step. It exists because the arithmetic and the advice can be
+        both right and unhelpful at once. An employer really will screen out
+        someone far past the ask, and a first Australian role below your level
+        really is how a lot of people get their local history started. The
+        report keeps its answer; this adds what the answer cannot see.
+      */}
+      {report.seniority && <Notice>{report.seniority}</Notice>}
+
+      {/* The evidence leads, because it is the part that can be read at a
+          glance. Two columns where there is room for two, one where there is
+          not — side by side at 300px each column is about four words wide. */}
+      <div style={{ display: 'flex', gap: isMobile ? 22 : 32, flexWrap: 'wrap' }}>
+        <Evidence
+          icon={<Check size={13} strokeWidth={3} />}
+          tone={C.success}
+          heading="Why"
+          items={report.youHave.slice(0, MAX_REASONS)}
+        />
+        <Evidence
+          icon={<X size={13} strokeWidth={3} />}
+          tone={C.accentGold}
+          heading="What is against you"
+          items={report.missing.slice(0, MAX_REASONS)}
+        />
+      </div>
+
+      {/* The model's own words. The whole report in a paragraph, and on a phone
+          a paragraph is the shape that reads worst, so it opens on request. */}
+      <div>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setWhyOpen((v) => !v)}
+            aria-expanded={whyOpen}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              width: '100%', minHeight: 44, padding: 0,
+              background: 'none', border: 'none', cursor: 'pointer',
+              textAlign: 'left', fontFamily: 'inherit',
+              fontSize: 14, fontWeight: 700, color: C.accentPetrol,
+            }}
+          >
+            {whyOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            {whyOpen ? 'Hide the reasoning' : 'Read the full reasoning'}
+          </button>
+        )}
+        {(!isMobile || whyOpen) && (
+          <p style={{
+            margin: isMobile ? '6px 0 0' : 0,
+            fontSize: isMobile ? 15 : 16, lineHeight: 1.65, color: C.textPrimary,
+          }}>
+            {report.verdict}
+          </p>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { useTrialWhatsappOptIn } from '../../lib/trialChallenge';
 import { ruleForDay } from '../../lib/trialChallengeRules';
 import { Step } from './TrialDayIntro';
@@ -91,7 +91,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
               href={whatsappOptInLink} target="_blank" rel="noopener noreferrer"
               style={{
                 display: 'block', textAlign: 'center', width: '100%', padding: 11, borderRadius: 10,
-                background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                ...ACTION, fontSize: 14, fontWeight: 700, textDecoration: 'none',
                 marginBottom: 8,
               }}
             >
@@ -118,7 +118,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
                 </select>
                 <button
                   onClick={saveHour} disabled={optIn.isPending}
-                  style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: C.accentPetrol, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ padding: '9px 14px', borderRadius: 8, border: 'none', ...ACTION, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                 >
                   {optIn.isPending ? '...' : 'Save'}
                 </button>
@@ -156,7 +156,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
           disabled={beginning}
           style={{
             width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none',
-            background: C.accentPetrol, color: '#fff', fontSize: 16, fontWeight: 700,
+            ...ACTION, fontSize: 16, fontWeight: 700,
             cursor: beginning ? 'default' : 'pointer', opacity: beginning ? 0.7 : 1,
           }}
         >

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, X } from 'lucide-react';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 
 /* ── MilestoneCard ─────────────────────────────────────────────────────
    Every hundred sent applications, hand the candidate their own data back
@@ -94,12 +94,12 @@ export function MilestoneCard() {
         </p>
       )}
 
-      <button
+      <button className="agc-action"
         onClick={() => ackMutation.mutate()}
         disabled={ackMutation.isPending}
         style={{
           padding: '6px 14px', borderRadius: 8, fontSize: 11.5, fontWeight: 700, border: 'none',
-          cursor: 'pointer', background: warm.colors.accentPetrol, color: 'white',
+          cursor: 'pointer', ...ACTION,
         }}
       >
         Got it

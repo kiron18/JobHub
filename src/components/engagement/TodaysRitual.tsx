@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, Lock, RotateCcw, Info } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { DUR, EASE, shake, t } from '../../lib/theme/motion';
 import { TARGET_MIN, TARGET_MAX } from '../../lib/dailyTarget';
 
@@ -228,12 +228,12 @@ export const TodaysRitual: React.FC<TodaysRitualProps> = ({
               type="button"
               onClick={onSet}
               disabled={busy === 'set'}
-              className="tap-target"
+              className="tap-target agc-action"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 15px', borderRadius: 8, border: 'none',
                 cursor: busy === 'set' ? 'progress' : 'pointer',
-                background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
+                ...ACTION,
                 ...warm.text.small, fontWeight: warm.weight.bold,
                 opacity: busy === 'set' ? 0.75 : 1,
                 transition: t(['background-color', 'opacity'], DUR.fast),

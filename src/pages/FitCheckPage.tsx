@@ -16,12 +16,13 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { classifyPaste } from '../lib/seekLink';
 import { ACCEPT_SEEK_LINKS } from '../config/features';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
@@ -62,6 +63,7 @@ export default function FitCheckPage() {
   const incoming = (location.state ?? null) as IncomingJob | null;
 
   const [jd, setJd] = useState(incoming?.jobDescription ?? '');
+  const isMobile = useIsMobile();
   // Whether a live trial-challenge window is running right now — the only
   // condition under which a free account is allowed into /apply. When there's
   // no live window, the globally-mounted TrialChallengeOverlay is already
@@ -248,7 +250,8 @@ export default function FitCheckPage() {
       scroller it created never scrolled at all.
     */
     <div style={{
-      background: C.bgCanvas,
+      // Transparent, so the shell's pale canvas shows and the cards lift off it.
+      background: 'transparent',
       fontFamily: warm.type.fontBody,
       display: 'flex', flexDirection: 'column',
     }}>
@@ -344,37 +347,38 @@ export default function FitCheckPage() {
               onChange={(e) => setJd(e.target.value)}
               placeholder="Paste ANY Job Description here"
               disabled={checking}
-              rows={12}
+              // Shorter on a phone, so "Find out" is on screen with the box.
+              rows={isMobile ? 7 : 12}
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: 18,
                 background: C.bgSurface,
-                border: `1px solid ${C.borderDefined}`,
-                borderRadius: warm.radius.input,
+                /* The box IS this screen: a 2px edge and the focus shadow so it
+                   is the first thing seen, not a form field among others. */
+                border: `2px solid ${C.borderDefined}`,
+                borderRadius: 14,
+                boxShadow: warm.shadow.focus,
                 fontSize: 15, lineHeight: 1.6, color: C.textPrimary,
                 fontFamily: 'inherit', resize: 'vertical',
                 outline: 'none',
               }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = C.accentPetrol; }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = C.action; }}
               onBlur={(e) => { e.currentTarget.style.borderColor = C.borderDefined; }}
             />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 18, flexWrap: 'wrap' }}>
               <button
                 type="button"
+                className={canSubmit && !checking ? 'agc-action agc-action-live' : 'agc-action'}
                 onClick={handleCheck}
                 disabled={!canSubmit}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 10,
-                  padding: '14px 28px',
-                  background: canSubmit ? C.accentPetrol : C.borderDefined,
-                  color: C.textOnDeep, border: 'none',
+                  padding: '15px 30px', minHeight: 52,
+                  ...ACTION,
+                  border: 'none',
                   borderRadius: warm.radius.button,
                   fontSize: 16, fontWeight: 700, fontFamily: 'inherit',
-                  cursor: canSubmit ? 'pointer' : 'not-allowed',
-                  boxShadow: canSubmit
-                    ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)'
-                    : 'none',
                 }}
               >
                 {checking
@@ -446,13 +450,12 @@ function EmployerAsk({ value, onChange, onConfirm, onSkip }: {
         />
         <button
           type="button"
+          className="agc-action"
           onClick={onConfirm}
           disabled={!value.trim()}
           style={{
             padding: '10px 18px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-            color: C.textOnDeep, background: C.accentPetrol, border: 'none', borderRadius: 9,
-            cursor: value.trim() ? 'pointer' : 'not-allowed',
-            opacity: value.trim() ? 1 : 0.5,
+            ...ACTION, border: 'none', borderRadius: 9,
           }}
         >
           Continue

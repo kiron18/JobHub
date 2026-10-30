@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 
 interface AnchorRect {
   top: number;
@@ -178,11 +178,10 @@ export const ProcessStripTooltip: React.FC<ProcessStripTooltipProps> = ({
 
         {dismissLabel && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-            <button
+            <button className="agc-action"
               onClick={onDismiss}
               style={{
-                background: warm.colors.accentPetrol,
-                color: '#FFFFFF',
+                ...ACTION,
                 border: 'none',
                 borderRadius: 10,
                 padding: '7px 14px',

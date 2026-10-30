@@ -6,7 +6,7 @@
  * A "Try again" button forces a remount; "Back to dashboard" navigates home.
  */
 import React from 'react';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 interface Props {
   children: React.ReactNode;
@@ -63,14 +63,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
           {this.state.error.message}
         </pre>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button
+          <button className="agc-action"
             onClick={this.reset}
             style={{
               padding: '10px 18px',
               fontSize: 13,
               fontWeight: 700,
-              color: warm.colors.borderWhisper,
-              background: warm.colors.accentPetrol,
+              ...ACTION,
               border: 'none',
               borderRadius: 10,
               cursor: 'pointer',

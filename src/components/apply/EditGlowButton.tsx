@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PenLine, Check } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { prefersReducedMotion } from '../../lib/theme/motion';
 
 /* ── EditGlowButton ────────────────────────────────────────────────────
@@ -130,11 +130,11 @@ export function EditGlowButton({ editing, onToggle, docLabel }: EditGlowButtonPr
               >
                 Got it
               </button>
-              <button
+              <button className="agc-action"
                 onClick={click}
                 style={{
                   padding: '8px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                  background: warm.colors.accentPetrol, color: '#FFFFFF', border: 'none',
+                  ...ACTION, border: 'none',
                 }}
               >
                 Start editing

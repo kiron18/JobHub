@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 interface FromScratchCaptureProps {
   /** Called once all four prompts are submitted and saved. */
@@ -229,7 +229,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
             )}
 
             <div style={{ marginTop: 28 }}>
-              <button
+              <button className="agc-action"
                 onClick={persistAndAdvance}
                 disabled={!canAdvance || saving}
                 aria-label="Save and continue to next step"
@@ -237,8 +237,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: warm.colors.accentPetrol,
-                  color: '#fff',
+                  ...ACTION,
                   border: 'none',
                   borderRadius: 11,
                   padding: '14px 28px',

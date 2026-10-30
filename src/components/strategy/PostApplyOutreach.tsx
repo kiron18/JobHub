@@ -29,7 +29,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp, Download, Loader2, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { buildOutreachMessages } from '../../lib/outreachFill';
 import { resolveContact, isGenericAddress } from '../../lib/contactSlots';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -72,6 +72,8 @@ export function PostApplyOutreach({
     savedFromEmail,
     onSaveFromEmail,
     resumeContent,
+    emphasise = true,
+    onMailOpened,
 }: {
     jobTitle?: string;
     company?: string;
@@ -91,6 +93,11 @@ export function PostApplyOutreach({
     onSaveFromEmail?: (email: string) => void;
     /** The finished, edited resume, for the "download to attach" button. */
     resumeContent?: string;
+    /** Whether the send button is THIS screen's gold action. The track step
+     *  turns it off once the email has gone, so only "Next job" is gold. */
+    emphasise?: boolean;
+    /** Told when they open the follow-up in their mail app. */
+    onMailOpened?: () => void;
 }) {
     /*
       Closed, because the drafts are no longer inside it.
@@ -494,12 +501,11 @@ export function PostApplyOutreach({
                                 borderRadius: 8, outline: 'none',
                             }}
                         />
-                        <button
+                        <button className="agc-action"
                             onClick={() => pickFrom(customFrom)}
                             disabled={!customFrom.trim()}
                             style={{
-                                padding: '9px 14px', fontSize: 12.5, fontWeight: 700,
-                                color: warm.colors.textOnDeep, background: warm.colors.accentPetrol,
+                                padding: '9px 14px', fontSize: 12.5, fontWeight: 700, ...ACTION,
                                 border: 'none', borderRadius: 8,
                                 cursor: customFrom.trim() ? 'pointer' : 'default',
                                 opacity: customFrom.trim() ? 1 : 0.5,
@@ -551,13 +557,13 @@ export function PostApplyOutreach({
             </div>
 
             <ActionCard
-                tone="primary"
+                tone={emphasise ? 'primary' : 'secondary'}
                 icon={lookingUpContact
                     ? <Loader2 size={16} className="animate-spin" />
                     : <Mail size={16} />}
                 label={mailLabel}
                 busy={lookingUpContact}
-                onClick={openMail}
+                onClick={() => { openMail(); onMailOpened?.(); }}
                 note={sendTo
                     ? `Opens ${clientName ?? 'your email'} to ${sendTo}, from your address.`
                     : lookingUpContact
@@ -650,6 +656,7 @@ function ActionCard({ tone, icon, label, note, busy, onClick }: {
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <button
                 type="button"
+                className={primary ? 'agc-action' : 'agc-secondary'}
                 onClick={onClick}
                 disabled={busy}
                 aria-busy={busy || undefined}
@@ -662,12 +669,13 @@ function ActionCard({ tone, icon, label, note, busy, onClick }: {
                        "Send the follow-up in Gmail" is a long one in half a
                        card. It wraps rather than truncating. */
                     lineHeight: 1.3, textAlign: 'center',
-                    color: primary ? warm.colors.textOnDeep : warm.colors.textPrimary,
-                    background: primary ? warm.colors.accentPetrol : warm.colors.bgSurface,
-                    border: primary ? 'none' : `1px solid ${warm.colors.borderDefined}`,
+                    // Primary is the gold next step (warmTokens ACTION).
+                    color: primary ? warm.colors.actionInk : warm.colors.accentPetrol,
+                    background: primary ? warm.colors.action : warm.colors.bgSurface,
+                    border: primary ? 'none' : `1.5px solid ${warm.colors.borderDefined}`,
                     borderRadius: 12, cursor: busy ? 'progress' : 'pointer',
                     opacity: busy ? 0.72 : 1,
-                    boxShadow: primary && !busy ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)' : 'none',
+                    boxShadow: primary && !busy ? warm.shadow.action : 'none',
                 }}
             >
                 <span style={{ flexShrink: 0, display: 'inline-flex' }}>{icon}</span>

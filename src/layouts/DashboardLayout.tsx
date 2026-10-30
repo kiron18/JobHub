@@ -33,6 +33,9 @@ const TOUCH_BREAKPOINT_PX = 768;
  */
 const MOBILE_BAR_PX = 56;
 
+/** Routes that run in focus mode: no sidebar, one way on. See `focusMode`. */
+const FOCUS_ROUTES = ['/check', '/apply'];
+
 // Warm theme override — matches landing palette. ThemeContext preserved per spec §7.4.
 const warmT = {
   bg: warm.colors.bgCanvas,
@@ -120,6 +123,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       before closing it.
     */
     const routeKey = location.pathname + location.search;
+
+    /*
+      Focus mode (Kiron, 30 Oct 2026: "guide their hand"). From the fit check to
+      "I've sent it" the page is a checkout, not a dashboard: no sidebar, no
+      menu, one quiet way out, and every screen's single gold button is the way
+      on. The rest of the app keeps its navigation.
+    */
+    const focusMode = FOCUS_ROUTES.includes(location.pathname);
     const [drawerRoute, setDrawerRoute] = useState<string | null>(null);
     const drawerOpen = drawerRoute === routeKey;
     const setDrawerOpen = (open: boolean) => setDrawerRoute(open ? routeKey : null);
@@ -448,14 +459,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                    bottom of every page sat under it, and 100vw is wider than the
                    content box wherever a scrollbar is reserved. */
                 height: '100dvh',
-                backgroundColor: warmT.bg,
-                backgroundImage: `radial-gradient(circle, ${warmT.dotColor} 1px, transparent 1px)`,
-                backgroundSize: '22px 22px',
+                /* A pale canvas, not white with dots (30 Oct 2026). White cards
+                   on a white page blended into it; on this they stand up. */
+                backgroundColor: warm.colors.bgPage,
                 color: warmT.text,
             }}
         >
             {/* Desktop sidebar */}
-            {!isTouch && (
+            {!isTouch && !focusMode && (
                 <motion.aside
                     onMouseEnter={() => setHovered(true)}
                     onMouseLeave={() => setHovered(false)}
@@ -496,6 +507,16 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                         borderBottom: `1px solid ${warmT.cardBorder}`,
                     }}
                 >
+                    {focusMode ? (
+                        <Link
+                            to="/"
+                            aria-label="Leave and go to the dashboard"
+                            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ color: warmT.textMuted }}
+                        >
+                            <X size={20} />
+                        </Link>
+                    ) : (
                     <button
                         onClick={() => setDrawerOpen(true)}
                         aria-label="Open navigation"
@@ -507,6 +528,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     >
                         <Menu size={20} />
                     </button>
+                    )}
                     <Link to="/" className="flex items-center gap-2">
                         <img
                             src="/Logo.svg"
@@ -596,6 +618,19 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             : undefined,
                     }}
                 >
+                    {focusMode && !isTouch && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: -16, marginBottom: 20 }}>
+                            <Link to="/" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
+                                <img src="/Logo.svg" alt="" aria-hidden className="w-7 h-7 rounded-lg object-contain" />
+                                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
+                                    Applying
+                                </span>
+                            </Link>
+                            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600, color: warmT.textMuted, textDecoration: 'none' }}>
+                                <X size={15} /> Save and leave
+                            </Link>
+                        </div>
+                    )}
                     {children}
                 </div>
 

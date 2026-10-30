@@ -45,7 +45,7 @@ import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEdit
 import React from 'react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION, SECONDARY } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
 import { StepRail } from '../components/shared/StepRail';
 import { celebrate } from '../lib/feedback';
@@ -488,6 +488,14 @@ export function StepperWorkspace() {
                             setCurrentIndex(next);
                         }}
                         isLast={currentIndex === steps.length - 1}
+                        nextLabel={(() => {
+                            let next = currentIndex + 1;
+                            while (next < steps.length && steps[next].manualOnly) next++;
+                            const id = steps[next]?.id;
+                            return id === 'cover-letter' ? 'Next: cover letter'
+                                : id === 'selection-criteria' ? 'Next: selection criteria'
+                                : 'Next: send it';
+                        })()}
                     />
                 )}
         </div>
@@ -768,6 +776,7 @@ function DocumentStep({
     onBack,
     onContinue,
     isLast,
+    nextLabel,
 }: {
     stepId: GenerateType;
     workspaceKey: string;
@@ -782,6 +791,8 @@ function DocumentStep({
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
+    /** What the forward button says: where it goes, not "Save & continue". */
+    nextLabel?: string;
 }) {
     const [content, setContent] = useState<string>('');
     const [generating, setGenerating] = useState(false);
@@ -1495,8 +1506,11 @@ function DocumentStep({
                 )}
             </AnimatePresence>
 
-            {/* CTAs */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            {/* The action bar. Sticky to the bottom of the screen (30 Oct 2026):
+                the forward button used to sit under the whole document, a page
+                of scrolling away, so "what now" had no answer on screen. Now
+                the next step is always in reach and is the only gold on it. */}
+            <div style={ACTION_BAR}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {onBack && (
                         <button
@@ -1562,6 +1576,7 @@ function DocumentStep({
                     */}
                     {!hasDraft && isSC && (
                         <button
+                            className="agc-action"
                             onClick={() => generate(false)}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
@@ -1572,6 +1587,7 @@ function DocumentStep({
                     )}
                     {!hasDraft && !isSC && generationStatus === 'error' && (
                         <button
+                            className="agc-action"
                             onClick={() => generate(false)}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
@@ -1582,12 +1598,13 @@ function DocumentStep({
                     )}
                     {hasDraft && (
                         <button
+                            className="agc-action agc-action-live"
                             onClick={isLast && feedItemId ? handleFinishApplication : handleContinue}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
                         >
-                            {isLast && feedItemId ? 'Back to my jobs' : isLast ? 'Finish' : 'Save & continue'}
-                            <ArrowRight size={14} />
+                            {isLast && feedItemId ? 'Back to my jobs' : isLast ? 'Finish' : (nextLabel ?? 'Save & continue')}
+                            <ArrowRight size={16} />
                         </button>
                     )}
                 </div>
@@ -1612,7 +1629,7 @@ function DocumentStep({
                             <button onClick={() => setConfirmRegen(false)} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: warm.colors.textSecondary, background: 'transparent', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 9, cursor: 'pointer' }}>
                                 Keep current
                             </button>
-                            <button onClick={confirmRegenerate} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, color: warm.colors.textOnDeep, background: warm.colors.accentPetrol, border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+                            <button className="agc-action" onClick={confirmRegenerate} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, ...ACTION, border: 'none', borderRadius: 9, cursor: 'pointer' }}>
                                 Regenerate
                             </button>
                         </div>
@@ -1826,6 +1843,18 @@ function TrackStep({
     );
 
     const [downloadingAll, setDownloadingAll] = useState(false);
+    // Which single thing is gold on this screen, in the order they happen:
+    // download the documents, say you sent it, email the person hiring, then
+    // the next job. The action bar always holds that one thing; the copies of
+    // it in the page are outlines.
+    const [downloaded, setDownloaded] = useState(false);
+    // Coming back to an application already sent skips straight to "done".
+    const [emailDone, setEmailDone] = useState(() => !!savedAt);
+    const phase: 'download' | 'send' | 'email' | 'done' = autoSaveError ? 'send'
+        : awaitingSend ? (downloaded || readyDrafts.length === 0 ? 'send' : 'download')
+        : emailDone ? 'done' : 'email';
+    const nextJobRef = useRef<HTMLTextAreaElement>(null);
+    const outreachRef = useRef<HTMLDivElement>(null);
 
     const downloadAll = async () => {
         if (downloadingAll) return;
@@ -1838,6 +1867,7 @@ function TrackStep({
                 // gap is the difference between three files and one.
                 await new Promise((r) => setTimeout(r, 400));
             }
+            setDownloaded(true);
         } catch {
             toast.error('Could not download them all. Try one at a time from each step.');
         } finally {
@@ -1890,17 +1920,10 @@ function TrackStep({
             */}
             {readyDrafts.length > 0 && (
                 <div>
-                    <button
+                    <button className="agc-secondary"
                         onClick={downloadAll}
                         disabled={downloadingAll}
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 8,
-                            padding: '11px 18px', fontSize: 13.5, fontWeight: 700,
-                            fontFamily: 'inherit', color: warm.colors.textOnDeep,
-                            background: warm.colors.accentPetrol, border: 'none',
-                            borderRadius: 10, cursor: downloadingAll ? 'wait' : 'pointer',
-                            opacity: downloadingAll ? 0.7 : 1,
-                        }}
+                        style={{ ...secondaryButtonStyle(downloadingAll), fontFamily: 'inherit' }}
                     >
                         {downloadingAll
                             ? (<><Loader2 size={14} className="animate-spin" /> Downloading…</>)
@@ -1915,19 +1938,14 @@ function TrackStep({
             {awaitingSend && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                     <button
+                        className="agc-secondary"
                         // Optimistic. The save took 6.5s in the 30 Oct review,
                         // and a spinner that long reads as stuck, so the screen
                         // moves to "Saved" at once and the request catches up.
                         // A failure rolls it back (the catch above).
                         onClick={() => { setConfirming(true); setSavedAt(new Date().toISOString()); setMarkNow(true); }}
                         disabled={confirming}
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 8,
-                            padding: '11px 18px', fontSize: 13.5, fontWeight: 700,
-                            fontFamily: 'inherit', color: warm.colors.accentPetrol,
-                            background: 'transparent', border: `1.5px solid ${warm.colors.accentPetrol}`,
-                            borderRadius: 10, cursor: confirming ? 'wait' : 'pointer',
-                        }}
+                        style={{ ...secondaryButtonStyle(confirming), fontFamily: 'inherit' }}
                     >
                         {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} I've sent it
                     </button>
@@ -2015,7 +2033,10 @@ function TrackStep({
                 application is in. Sits above the navigation deliberately — it is
                 the next useful thing to do, but the buttons below stay live so it
                 never becomes a toll gate on the way to the next application. */}
+            <div ref={outreachRef} style={{ scrollMarginTop: 24 }}>
             <PostApplyOutreach
+                emphasise={phase === 'email'}
+                onMailOpened={() => setEmailDone(true)}
                 jobTitle={role}
                 company={company}
                 coverLetter={coverDraft?.content}
@@ -2039,27 +2060,143 @@ function TrackStep({
                 onSaveFromEmail={saveOutreachFromEmail}
                 resumeContent={resumeDraft?.content ?? undefined}
             />
+            </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
-                <button onClick={onBack} style={ghostButtonStyle(false)}>
-                    <ArrowLeft size={14} />
-                    Back
-                </button>
+            {/* The loop closes here. Paste the next ad without leaving the flow. */}
+            <NextJobCard textareaRef={nextJobRef} highlight={phase === 'done'} />
+
+            <div style={ACTION_BAR}>
                 <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={onBack} style={ghostButtonStyle(false)}>
+                        <ArrowLeft size={14} />
+                        Back
+                    </button>
                     <button onClick={() => navigate('/tracker')} style={ghostButtonStyle(false)}>
                         Open tracker
                     </button>
+                </div>
+                {/* The bar always holds the one thing to do now, whichever it is. */}
+                {phase === 'download' ? (
+                    <button className="agc-action agc-action-live" onClick={downloadAll} disabled={downloadingAll} style={primaryButtonStyle(downloadingAll)}>
+                        {downloadingAll ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Download all {readyDrafts.length}
+                    </button>
+                ) : phase === 'send' && awaitingSend ? (
+                    <button className="agc-action agc-action-live" onClick={() => { setConfirming(true); setSavedAt(new Date().toISOString()); setMarkNow(true); }} disabled={confirming} style={primaryButtonStyle(confirming)}>
+                        <Check size={16} /> I've sent it
+                    </button>
+                ) : phase === 'email' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <button
+                            onClick={() => setEmailDone(true)}
+                            style={{ background: 'none', border: 'none', padding: '8px 4px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, color: warm.colors.textMuted, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                        >
+                            Skip the email
+                        </button>
+                        <button
+                            className="agc-action agc-action-live"
+                            onClick={() => {
+                                // First press brings the email into view; once it is
+                                // on screen, the same press sends it, so the bar and
+                                // the card's own button are one action, not two.
+                                const card = outreachRef.current;
+                                const send = card?.querySelector<HTMLButtonElement>('button.agc-action');
+                                const r = send?.getBoundingClientRect();
+                                if (send && r && r.top >= 0 && r.bottom <= window.innerHeight - 90) send.click();
+                                else (send ?? card)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                            style={primaryButtonStyle(false)}
+                        >
+                            <Mail size={16} /> Email the hiring manager
+                        </button>
+                    </div>
+                ) : (
                     <button
+                        className="agc-action agc-action-live"
                         onClick={() => {
                             window.dispatchEvent(new CustomEvent('process:saved'));
-                            navigate('/');
+                            nextJobRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            nextJobRef.current?.focus({ preventScroll: true });
                         }}
                         style={primaryButtonStyle(false)}
                     >
-                        Apply for another role
-                        <ArrowRight size={14} />
+                        Next job <ArrowRight size={16} />
                     </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── NextJobCard ─────────────────────────────────────────────────────────────
+
+/**
+ * The next application, started from the end of this one (30 Oct 2026).
+ *
+ * The product is a loop: check, write, send, next. Sending them back to the
+ * dashboard to find the paste box again was the one break in it, and every
+ * break is a chance to stop for the day. So the box is here, with today's
+ * count above it, and pasting runs the fit check straight away (FitCheckPage
+ * auto-runs a job handed over in router state).
+ */
+function NextJobCard({ textareaRef, highlight }: { textareaRef: React.RefObject<HTMLTextAreaElement | null>; highlight: boolean }) {
+    const navigate = useNavigate();
+    const [ad, setAd] = useState('');
+    const { data: goal } = useQuery({
+        queryKey: ['tracker-goal'],
+        queryFn: async () => (await api.get<{ goal: number; applied: number }>('/tracker/goal')).data,
+        staleTime: 30_000,
+    });
+    const ready = ad.trim().length >= 100;
+    const applied = goal?.applied ?? 0;
+    const target = goal?.goal ?? 0;
+    const pct = target > 0 ? Math.min(100, Math.round((applied / target) * 100)) : 0;
+    return (
+        <div style={{
+            marginTop: 6, padding: 'clamp(16px, 4vw, 22px)', borderRadius: 14,
+            background: highlight ? warm.colors.actionSoft : warm.colors.bgAlt,
+            border: `1.5px solid ${highlight ? warm.colors.action : warm.colors.borderWhisper}`,
+            transition: 'background .2s ease, border-color .2s ease',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: warm.colors.textPrimary, letterSpacing: '-0.01em' }}>
+                    Next job
+                </p>
+                {target > 0 && (
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: warm.colors.textSecondary }}>
+                        {applied} of {target} today
+                    </p>
+                )}
+            </div>
+            {target > 0 && (
+                <div style={{ height: 8, borderRadius: 6, marginTop: 10, background: 'rgba(16,24,40,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: warm.colors.action, borderRadius: 6, transition: 'width .4s ease' }} />
                 </div>
+            )}
+            <textarea
+                ref={textareaRef}
+                value={ad}
+                onChange={(e) => setAd(e.target.value)}
+                placeholder="Paste the next job ad here. We check the fit straight away."
+                rows={4}
+                style={{
+                    display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 14,
+                    padding: 14, borderRadius: 12, resize: 'vertical',
+                    border: `1.5px solid ${warm.colors.borderDefined}`, background: '#fff',
+                    fontFamily: 'inherit', fontSize: 14.5, lineHeight: 1.55, color: warm.colors.textPrimary, outline: 'none',
+                }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+                <button
+                    className="agc-action"
+                    disabled={!ready}
+                    onClick={() => navigate('/check', { state: { jobDescription: ad.trim() } })}
+                    style={primaryButtonStyle(false)}
+                >
+                    Check this job <ArrowRight size={16} />
+                </button>
+                {!ready && ad.trim().length > 0 && (
+                    <span style={{ fontSize: 13, color: warm.colors.textMuted }}>Paste the whole ad, not just the title.</span>
+                )}
             </div>
         </div>
     );
@@ -2423,24 +2560,64 @@ function ToolbarButton({ icon, label, onClick }: { icon: React.ReactNode; label:
     );
 }
 
+/** The next step. Gold, and the biggest thing in the action bar. Pair with className="agc-action". */
 function primaryButtonStyle(busy: boolean): React.CSSProperties {
     return {
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '10px 18px',
-        fontSize: 13,
+        gap: 8,
+        padding: '13px 24px',
+        minHeight: 48,
+        fontSize: 15,
         fontWeight: 700,
         letterSpacing: '-0.01em',
-        color: warm.colors.textOnDeep,
-        background: warm.colors.accentPetrol,
+        ...ACTION,
         border: 'none',
-        borderRadius: 10,
+        borderRadius: 12,
         cursor: busy ? 'wait' : 'pointer',
         opacity: busy ? 0.7 : 1,
-        boxShadow: warm.shadow.soft,
     };
 }
+
+/** A real but quieter way on: blue outline, white fill. Pair with className="agc-secondary". */
+function secondaryButtonStyle(busy: boolean): React.CSSProperties {
+    return {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '12px 20px',
+        minHeight: 46,
+        fontSize: 14.5,
+        ...SECONDARY,
+        borderRadius: 12,
+        cursor: busy ? 'wait' : 'pointer',
+        opacity: busy ? 0.7 : 1,
+    };
+}
+
+/**
+ * The bar the step's buttons live in, stuck to the bottom of the scroll pane.
+ * It bleeds to the card's edges so it reads as the floor of the card, and the
+ * frosted white keeps the document legible as it scrolls underneath.
+ */
+const ACTION_BAR: React.CSSProperties = {
+    position: 'sticky',
+    bottom: 0,
+    zIndex: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    margin: '0 calc(-1 * clamp(16px, 4.5vw, 28px)) calc(-1 * clamp(16px, 4.5vw, 28px))',
+    padding: '14px clamp(16px, 4.5vw, 28px) calc(14px + var(--safe-bottom, 0px))',
+    background: 'rgba(255,255,255,0.94)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    borderTop: `1px solid ${warm.colors.borderDefined}`,
+    borderRadius: '0 0 14px 14px',
+    boxShadow: '0 -10px 24px -16px rgba(16,24,40,0.35)',
+};
 
 function ghostButtonStyle(disabled: boolean): React.CSSProperties {
     return {

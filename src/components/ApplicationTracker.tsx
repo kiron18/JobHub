@@ -21,7 +21,7 @@ import { PipelineFunnel } from './tracker/PipelineFunnel';
 import { SortControls } from './tracker/SortControls';
 import type { SortBy } from './tracker/SortControls';
 import { SectionIntroBanner } from './processStrip';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { ActivityHeatmap } from './tracker/ActivityHeatmap';
 import { OutreachTracker } from './linkedin/OutreachTracker';
@@ -483,12 +483,12 @@ export const ApplicationTracker: React.FC = () => {
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-                                    <button
+                                    <button className="agc-action"
                                         onClick={handleAddJob}
                                         disabled={!addForm.title.trim() || !addForm.company.trim() || createJobMutation.isPending}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                                            background: warm.colors.accentPetrol, color: '#FFFFFF',
+                                            ...ACTION,
                                             fontSize: 12, fontWeight: 700, borderRadius: 10,
                                             border: 'none', cursor: createJobMutation.isPending ? 'not-allowed' : 'pointer',
                                             opacity: (!addForm.title.trim() || !addForm.company.trim() || createJobMutation.isPending) ? 0.5 : 1,

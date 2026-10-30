@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Brain, Lock, Pencil } from 'lucide-react';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 const LS_SEEN = 'jobhub_profile_explainer_seen';
 
@@ -175,11 +175,10 @@ export const ProfileExplainerModal: React.FC<ProfileExplainerModalProps> = ({ op
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button
+              <button className="agc-action"
                 onClick={onClose}
                 style={{
-                  background: warm.colors.accentPetrol,
-                  color: '#FFFFFF',
+                  ...ACTION,
                   border: 'none',
                   borderRadius: 12,
                   padding: '10px 22px',

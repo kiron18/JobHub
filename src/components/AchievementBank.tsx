@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, Save, Loader2, RefreshCw, TrendingUp, Sparkles, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 interface Achievement {
   id: string;
@@ -312,10 +312,10 @@ export const AchievementBank: React.FC = () => {
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setIsCreating(false)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: warm.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button
+              <button className="agc-action"
                 onClick={handleSave}
                 disabled={createMutation.isPending}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', ...ACTION, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
               >
                 <Save size={12} /> Save
               </button>
@@ -386,10 +386,10 @@ export const AchievementBank: React.FC = () => {
                     </button>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => { setEditingId(null); setPolishReasoning(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: warm.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                      <button
+                      <button className="agc-action"
                         onClick={handleSave}
                         disabled={updateMutation.isPending}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', ...ACTION, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                       >
                         <Save size={12} /> Save
                       </button>

@@ -39,9 +39,10 @@ export const WARM: Theme = {
   inputBg: warm.colors.bgAlt,                                 // #F4EFE8
   inputBorder: warm.colors.borderDefined,
   inputText: warm.colors.textPrimary,
-  btnBg: warm.colors.accentPetrol,                            // #2D5A6E
-  btnText: '#FFFFFF',
-  btnShadow: '0 6px 24px rgba(45,90,110,0.25)',
+  // The next step is gold (warmTokens ACTION).
+  btnBg: warm.colors.action,
+  btnText: warm.colors.actionInk,
+  btnShadow: warm.shadow.action,
   progressBg: warm.colors.borderWhisper,
   progressFill: warm.colors.accentPetrol,
   chipBg: warm.colors.bgAlt,

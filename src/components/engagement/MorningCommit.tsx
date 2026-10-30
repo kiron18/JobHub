@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Flame, Loader2 } from 'lucide-react';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { prefersReducedMotion } from '../../lib/theme/motion';
 
 /* ── MorningCommit ─────────────────────────────────────────────────────
@@ -112,12 +112,12 @@ export function MorningCommit({ min, max, initial, filedToday, streak, programDa
           <li>Run out of good roles? You can switch the rest to outreach, two messages for each application.</li>
         </ul>
 
-        <button
+        <button className="agc-action"
           onClick={() => onCommit(n)}
           disabled={busy}
           style={{
             marginTop: 22, width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
-            background: warm.colors.accentPetrol, color: '#fff', cursor: busy ? 'default' : 'pointer',
+            ...ACTION, cursor: busy ? 'default' : 'pointer',
             fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             opacity: busy ? 0.8 : 1,
           }}

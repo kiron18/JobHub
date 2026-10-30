@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
@@ -259,14 +259,14 @@ const SaveCancelButtons: React.FC<{
   saving: boolean;
 }> = ({ onSave, onCancel, saving }) => (
   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-    <button
+    <button className="agc-action"
       onClick={onSave}
       disabled={saving}
       aria-label="Save"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '7px 14px', borderRadius: 8, border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-        background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700,
+        ...ACTION, fontSize: 12, fontWeight: 700,
         opacity: saving ? 0.6 : 1,
       }}
     >

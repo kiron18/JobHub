@@ -4,7 +4,7 @@ import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPendingOnboarding } from '../lib/pendingOnboarding';
 import { OnboardingIntake, type IntakeVariant } from './OnboardingIntake';
-import { warm } from '../lib/theme/warmTokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 
 // Paid-client onboarding uses different (non-diagnostic) messaging. The flag is
 // set by the set-password page the coaching email link lands on, and mirrored
@@ -303,12 +303,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
           <p style={{ margin: '0 0 20px', fontSize: 14.5, lineHeight: 1.6, color: '#5C5750' }}>
             Nothing is lost. This is usually a moment's connection trouble.
           </p>
-          <button
+          <button className="agc-action"
             type="button"
             onClick={() => queryClient.refetchQueries({ queryKey: ['profile'] })}
             style={{
               padding: '12px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: warm.colors.accentPetrol, color: warm.colors.bgCanvas, fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+              ...ACTION, fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
             }}
           >
             Try again

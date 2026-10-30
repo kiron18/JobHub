@@ -1,6 +1,6 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from 'framer-motion';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 import { TrialDayProgress } from './TrialDayProgress';
 
 const C = warm.colors;
@@ -53,7 +53,7 @@ export function TrialDayIntro({ windowMinutes, minimum, onBegin, beginning }: Pr
           disabled={beginning}
           style={{
             width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none',
-            background: C.accentPetrol, color: '#fff', fontSize: 16, fontWeight: 700,
+            ...ACTION, fontSize: 16, fontWeight: 700,
             cursor: beginning ? 'default' : 'pointer', opacity: beginning ? 0.7 : 1,
           }}
         >

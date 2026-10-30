@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { colors, type } from '../landing/tokens';
 import api from '../../lib/api';
 import { trackSponsorEmailCaptured, trackSponsorLinksUnlocked } from '../../lib/analytics';
-import { warm } from '../../lib/theme/warmTokens';
+import { warm, ACTION } from '../../lib/theme/warmTokens';
 
 interface Props {
   onClose: () => void;
@@ -124,8 +124,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
                 padding: '12px',
                 borderRadius: 10,
                 border: 'none',
-                background: colors.accentPetrol,
-                color: colors.textOnDeep,
+                ...ACTION,
                 fontSize: 15,
                 fontWeight: 700,
                 fontFamily: type.body,

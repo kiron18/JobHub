@@ -17,6 +17,7 @@ import {
   trackNoResumeOpened,
 } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
+import { warm, ACTION } from '../lib/theme/warmTokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import { DocumentPaper } from '../components/shared/DocumentPaper';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -879,10 +880,11 @@ export const WelcomePage: React.FC = () => {
                     <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                       <button
                         type="button"
+                        className="agc-action"
                         onClick={() => startQuestions()}
                         style={{
                           cursor: 'pointer', padding: '11px 18px', borderRadius: 12, border: 'none',
-                          background: colors.accentPetrol, color: '#fff',
+                          ...ACTION, 
                           fontFamily: T.body, fontSize: 14.5, fontWeight: 700,
                           display: 'inline-flex', alignItems: 'center', gap: 7,
                         }}
@@ -1037,7 +1039,7 @@ export const WelcomePage: React.FC = () => {
             className="agc-cta-pulse"
             onClick={() => startQuestions()}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            style={{ fontFamily: T.body, fontSize: 16.5, fontWeight: 700, cursor: 'pointer', padding: '16px 30px', borderRadius: 14, border: 'none', background: colors.accentPetrol, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            style={{ fontFamily: T.body, fontSize: 16.5, fontWeight: 700, cursor: 'pointer', padding: '16px 30px', borderRadius: 14, border: 'none', ...ACTION,  display: 'inline-flex', alignItems: 'center', gap: 8 }}
           >
             Fix all of this <ArrowRight size={18} />
           </motion.button>
@@ -1052,8 +1054,8 @@ export const WelcomePage: React.FC = () => {
 
         <style>{`
           @keyframes agcCtaPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(45,90,110,0.34); }
-            50%      { box-shadow: 0 0 0 13px rgba(45,90,110,0); }
+            0%, 100% { box-shadow: 0 10px 22px -8px rgba(217,151,10,0.65), 0 0 0 0 rgba(245,183,49,0.5); }
+            50%      { box-shadow: 0 10px 22px -8px rgba(217,151,10,0.65), 0 0 0 13px rgba(245,183,49,0); }
           }
           .agc-cta-pulse { animation: agcCtaPulse 2.6s ease-in-out infinite; }
           @media (prefers-reduced-motion: reduce) { .agc-cta-pulse { animation: none !important; } }
@@ -1824,13 +1826,17 @@ export const WelcomePage: React.FC = () => {
                 padding: isMobile ? '20px 16px' : 'clamp(24px, 5vh, 40px) 26px', borderRadius: 16, cursor: 'pointer',
                 /* Bolder than the whisper it was: a 2px petrol stroke, so the
                    one thing to do on the page is the first thing seen. */
-                border: `2px ${dragging || file ? 'solid' : 'dashed'} ${colors.accentPetrol}`,
-                background: dragging || file ? 'rgba(45,90,110,0.08)' : 'rgba(45,90,110,0.035)',
+                border: `2px ${dragging || file ? 'solid' : 'dashed'} ${warm.colors.actionPressed}`,
+                background: dragging || file ? warm.colors.actionSoft : 'rgba(245,183,49,0.07)',
                 transition: 'border-color .15s ease, background .15s ease',
               }}
             >
-              <span style={{ color: colors.accentPetrol }}>
-                <UploadCloud size={isMobile ? 32 : 42} strokeWidth={1.6} />
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: isMobile ? 52 : 62, height: isMobile ? 52 : 62, borderRadius: '50%',
+                ...ACTION,
+              }}>
+                <UploadCloud size={isMobile ? 26 : 30} strokeWidth={2} />
               </span>
               <span style={{ minWidth: 0, maxWidth: '100%' }}>
                 <span style={{ display: 'block', fontFamily: T.display, fontSize: isMobile ? 19 : 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2115,10 +2121,10 @@ function ChallengeKitForm({ tight, onBack }: { tight?: boolean; onBack: () => vo
             placeholder="you@email.com" style={field} />
         </label>
       </div>
-      <button type="button" onClick={() => void send()} disabled={state === 'sending'}
+      <button type="button" className="agc-action" onClick={() => void send()} disabled={state === 'sending'}
         style={{
           width: '100%', marginTop: 18, minHeight: 50, borderRadius: 12, border: 'none', cursor: 'pointer',
-          background: colors.accentPetrol, color: '#fff', fontFamily: T.body, fontSize: 15.5, fontWeight: 700,
+          ...ACTION,  fontFamily: T.body, fontSize: 15.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
         {state === 'sending' ? <Loader2 size={17} className="animate-spin" /> : <>Send me the playbook <ArrowRight size={16} /></>}
@@ -2161,11 +2167,11 @@ function PasteResume({ onSubmit, onCancel }: { onSubmit: (f: File) => void; onCa
         placeholder="Paste your whole resume here: your name and contact details, every job, your education and your skills."
         style={{ ...inputStyle, display: 'block', resize: 'vertical', minHeight: 190, lineHeight: 1.5, fontSize: 14 }} />
       <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
-        <button type="button" disabled={short}
+        <button type="button" className="agc-action" disabled={short}
           onClick={() => onSubmit(new File([text.trim()], 'pasted-resume.txt', { type: 'text/plain' }))}
           style={{
             flex: 1, minHeight: 46, borderRadius: 12, border: 'none', cursor: short ? 'not-allowed' : 'pointer',
-            background: colors.accentPetrol, opacity: short ? 0.5 : 1, color: '#fff', fontFamily: T.body, fontSize: 15, fontWeight: 700,
+            ...ACTION, opacity: short ? 0.5 : 1,  fontFamily: T.body, fontSize: 15, fontWeight: 700,
           }}>
           Diagnose my resume
         </button>
@@ -2792,7 +2798,7 @@ function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave,
                   style={{
                     flexShrink: 0, cursor: draft.trim() ? 'pointer' : 'not-allowed',
                     padding: '0 18px', borderRadius: 12, border: 'none',
-                    background: colors.accentPetrol, color: colors.textOnDeep,
+                    ...ACTION, 
                     fontFamily: T.body, fontSize: 14, fontWeight: 700,
                     opacity: draft.trim() ? 1 : 0.45,
                   }}
@@ -3303,8 +3309,8 @@ function Display({ children, tight }: { children: React.ReactNode; tight?: boole
 function PrimaryBtn({ label, onClick, loading, dim }: { label: string; onClick: () => void; loading?: boolean; dim?: boolean }) {
   const inert = loading || dim;
   return (
-    <motion.button onClick={onClick} disabled={loading} whileHover={{ scale: inert ? 1 : 1.02 }} whileTap={{ scale: inert ? 1 : 0.98 }}
-      style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: loading ? 'default' : 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentPetrol, color: colors.textOnDeep, display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 150, justifyContent: 'center', opacity: dim ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+    <motion.button className="agc-action" onClick={onClick} disabled={loading} whileHover={{ scale: inert ? 1 : 1.02 }} whileTap={{ scale: inert ? 1 : 0.98 }}
+      style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: loading ? 'default' : 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', ...ACTION,  display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 150, justifyContent: 'center', opacity: dim ? 0.45 : 1, transition: 'opacity 0.2s' }}>
       {loading ? <Loader2 size={18} className="animate-spin" /> : <>{label} <ArrowRight size={18} /></>}
     </motion.button>
   );
