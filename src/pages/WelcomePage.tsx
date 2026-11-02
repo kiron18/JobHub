@@ -873,31 +873,9 @@ export const WelcomePage: React.FC = () => {
               >
                 <div className="diag-panel-body">
                 {openCard === 'gap' && (
-                  <>
-                    <BriefProse text={brief} />
-                    {/* The way out, said where the problem is read. Without it the
-                        gap is a verdict; with it, it is the first step of a fix. */}
-                    <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-                      <button
-                        type="button"
-                        className="agc-action"
-                        onClick={() => startQuestions()}
-                        style={{
-                          cursor: 'pointer', padding: '11px 18px', borderRadius: 12, border: 'none',
-                          ...ACTION, 
-                          fontFamily: T.body, fontSize: 14.5, fontWeight: 700,
-                          display: 'inline-flex', alignItems: 'center', gap: 7,
-                        }}
-                      >
-                        Here's how we fix it <ArrowRight size={16} />
-                      </button>
-                      <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-                        {outstandingQs > 0
-                          ? `${outstandingQs} quick ${outstandingQs === 1 ? 'question' : 'questions'}, mostly one tap each.`
-                          : 'Nothing more we need from you.'}
-                      </span>
-                    </div>
-                  </>
+                  // No button of its own: "Fix all of this" under the cards is
+                  // the one way forward, so the panel does not offer a second.
+                  <BriefProse text={brief} />
                 )}
 
                 {openCard === 'found' && (
@@ -2690,6 +2668,8 @@ function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave,
 }) {
   const answered = answer?.status === 'answered';
   const skipped = !!answer && answer.status !== 'answered';
+  const canTabFill = !!question.example && !draft;
+  const hasKeyboard = typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
   return (
     <div id={`welcome-q-${question.id}`} style={{
@@ -2783,15 +2763,38 @@ function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave,
               )}
 
               <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  autoFocus
-                  inputMode={question.kind === 'number' ? 'numeric' : 'text'}
-                  value={draft}
-                  onChange={e => onDraft(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') onSave(draft); }}
-                  placeholder={question.example || 'Your answer'}
-                  style={inputStyle}
-                />
+                {/* Tab turns the example into the answer, ready to edit, like
+                    accepting an autocomplete. Only while the box is empty, so
+                    Tab never overwrites what someone typed and still moves focus
+                    on once there is an answer. Keyboards only: a phone has no
+                    Tab key, so the hint is not shown there. */}
+                <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
+                  <input
+                    autoFocus
+                    inputMode={question.kind === 'number' ? 'numeric' : 'text'}
+                    value={draft}
+                    onChange={e => onDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') onSave(draft);
+                      if (e.key === 'Tab' && !e.shiftKey && canTabFill) { e.preventDefault(); onDraft(question.example!); }
+                    }}
+                    placeholder={question.example || 'Your answer'}
+                    style={{ ...inputStyle, paddingRight: canTabFill && hasKeyboard ? 62 : 16 }}
+                  />
+                  {canTabFill && hasKeyboard && (
+                    <kbd
+                      aria-hidden
+                      title="Press Tab to use this example"
+                      style={{
+                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none',
+                        padding: '2px 7px', borderRadius: 6, border: `1px solid ${colors.borderDefined}`, borderBottomWidth: 2,
+                        background: colors.bgAlt, fontFamily: T.body, fontSize: 11, fontWeight: 600, color: colors.textMuted,
+                      }}
+                    >
+                      Tab
+                    </kbd>
+                  )}
+                </div>
                 <button
                   onClick={() => onSave(draft)}
                   disabled={!draft.trim()}
@@ -2885,6 +2888,24 @@ const prose: React.CSSProperties = {
   margin: 0,
 };
 
+/**
+ * A paragraph cut into sentences. Not at every full stop: the brief quotes the
+ * resume back, so "e.g." and a bracketed placeholder like "[Add: e.g. X%
+ * increase]" must stay whole, and "$1.2M" never has a space after its point.
+ */
+const ABBREVIATIONS = /\b(e\.g|i\.e|etc|vs|approx|Mr|Mrs|Ms|Dr|St|No)\.$/i;
+
+function sentences(p: string): string[] {
+  const out: string[] = [];
+  for (const piece of p.split(/(?<=[.!?]['"’”)]?)\s+(?=['"‘“(\[]?[A-Z0-9$])/)) {
+    const prev = out[out.length - 1];
+    const unclosed = prev !== undefined && prev.split('[').length > prev.split(']').length;
+    if (prev !== undefined && (ABBREVIATIONS.test(prev) || unclosed)) out[out.length - 1] = `${prev} ${piece}`;
+    else out.push(piece);
+  }
+  return out;
+}
+
 function BriefProse({ text }: { text: string }) {
   const paras = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 
@@ -2958,7 +2979,11 @@ function BriefProse({ text }: { text: string }) {
           >
             {i + 1}
           </span>
-          {p}
+          {/* A sentence to a line, with air between, so a hundred-word problem
+              can be skimmed rather than read as one block. */}
+          {sentences(p).map((s, j) => (
+            <span key={j} style={{ display: 'block', marginTop: j === 0 ? 0 : '0.55em' }}>{s}</span>
+          ))}
         </p>
       ))}
 

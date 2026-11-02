@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUp, Check } from 'lucide-react';
+import { ArrowRight, ArrowUp, Check, Hourglass, MailX, Send, VolumeX } from 'lucide-react';
 import { colors, type as T } from '../landing/tokens';
 import { Eyebrow } from '../landing/shared/Eyebrow';
 import { MockWindow, MockFitReport, MockTracker } from '../landing/pricing/AppMock';
@@ -19,52 +19,33 @@ import { ACTION } from '../../lib/theme/warmTokens';
  * those steps now render as compact map cards, not paragraphs, and a card
  * is not the place for a rhythm line.
  *
- * The testimonials are a side rail next to the text that raises them, not a
- * stacked block the reader has to scroll past. A page whose only job is
- * trust and comprehension should not cost more scrolling than the argument
- * needs; the images support the copy from beside it instead of interrupting
- * it. On a phone, where there is no side to put them, they become a short
- * horizontal strip the reader can flick through instead of a wall of full
- * width cards.
- *
- * Screenshots are the real client messages under public/Assets/testimonials.
- * Names are redacted in the source images and are not restored here.
+ * The testimonial screenshot rails are gone (Kiron, 2 Nov 2026): at rail
+ * width nobody could read them. The pain is drawn instead, as a timeline of
+ * what happens to an application and a figure thinking the questions that
+ * follow it.
  */
 
 export const HOW_IT_WORKS_ID = 'how-it-works';
 
-const MSG = (n: string) => encodeURI(`/Assets/testimonials/messages/${n}.png`);
-
-/** Comfortable reading width for a paragraph. Also what the text track next
- *  to a testimonial rail resolves to, since 900 (article) - 240 (rail) - 36
- *  (gap) lands close enough to this that the two layouts read as one size. */
+/** Comfortable reading width for a paragraph. */
 const READ = 660;
 
-interface RailItem {
-  src: string;
-  alt: string;
-  /** Shows only the middle band of an image with a lot of empty page around the message. */
-  crop?: string;
-  rotate: number;
-}
+/** What happens to an application, left to right. The last stop has no end. */
+const SILENCE = [
+  { when: 'Day 1', t: 'You apply.', Icon: Send },
+  { when: 'Days pass', t: 'You wait.', Icon: Hourglass },
+  { when: 'Week 3', t: 'You get a generic rejection.', Icon: MailX },
+  { when: 'Never', t: 'Or worse, you hear nothing.', Icon: VolumeX },
+] as const;
 
-/* 31 (11) is a full 1920x1080 grab of an inbox with the message in the middle
-   third, so it is cropped to that band. */
-const PAIN_RAIL: RailItem[] = [
-  { src: MSG('31 (11)'), crop: '1920 / 800', rotate: -1.5, alt: 'A generic rejection email: due to the high volume of applications we are only able to respond to successful applicants' },
-  { src: MSG('8'), rotate: 1.5, alt: 'A message: this is what I always get, I am really losing out on hope, with a rejection email attached' },
-  { src: MSG('6'), rotate: -1, alt: 'A message: I need a solution, I have been in a job I dislike for more than two years' },
-  { src: MSG('7'), rotate: 1, alt: 'A message: contemplating whether I chose the right degree' },
-];
-
-/* The Inlight call screenshot (image 5) dropped: it read as an orphaned
-   testimonial once the layout stopped needing a fourth item to balance a
-   two-column grid. */
-const WIN_RAIL: RailItem[] = [
-  { src: MSG('2'), rotate: -1.5, alt: 'A message: I have got a job as a Technical BA, thank you for your support' },
-  { src: MSG('3'), rotate: 1, alt: 'A message from a client' },
-  { src: MSG('10'), rotate: -1, alt: 'A message from a client' },
-];
+const GUESSES = [
+  'Did my resume pass the ATS?',
+  'Was I qualified?',
+  'Was my English good enough?',
+  'Was it my nationality?',
+  'My accent?',
+  'My lack of Australian experience?',
+] as const;
 
 const STEPS = [
   { t: 'Optimise your resume', d: 'Set up your core profile once. We help you clean up and position your resume before you start applying.' },
@@ -105,25 +86,85 @@ function Lines({ children, style }: { children: string[]; style?: React.CSSPrope
   );
 }
 
-/** The pile of screenshots beside the text that raises them, not below it. */
-function TestimonialRail({ items }: { items: RailItem[] }) {
+/**
+ * An application's life, left to right. Each stop's connector runs to the
+ * next one; the last stop's runs off the edge and fades, because hearing
+ * nothing has no end point.
+ */
+function SilenceTimeline() {
   return (
-    <div className="hiw-rail-images">
-      {items.map(it => (
-        <div
-          key={it.src}
-          className="hiw-rail-card"
-          style={{ transform: `rotate(${it.rotate}deg)`, aspectRatio: it.crop }}
-        >
-          <img
-            src={it.src} alt={it.alt} loading="lazy" draggable={false}
-            style={{ display: 'block', width: '100%', height: it.crop ? '100%' : 'auto', objectFit: 'cover' }}
-          />
-        </div>
+    <ol className="hiw-tl" aria-label="What happens to an application">
+      {SILENCE.map(({ when, t, Icon }, i) => (
+        <li key={t} className={`hiw-tl-stop${i === SILENCE.length - 1 ? ' is-last' : ''}`}>
+          <span className="hiw-tl-when">{when}</span>
+          <span className="hiw-tl-dot"><Icon size={19} strokeWidth={2} aria-hidden /></span>
+          <span className="hiw-tl-t">{t}</span>
+        </li>
       ))}
+    </ol>
+  );
+}
+
+/** Someone at their desk, chin on hand, looking up at the questions. */
+function ThinkingFigure() {
+  const ink = colors.textPrimary;
+  return (
+    <svg viewBox="0 0 160 150" width="176" height="165" aria-hidden style={{ display: 'block', overflow: 'visible' }}>
+      {/* shoulders */}
+      <path d="M22 150 C 26 112, 50 98, 80 98 C 110 98, 134 112, 138 150 Z" fill={colors.bgAlt} stroke={ink} strokeWidth={2.5} strokeLinejoin="round" />
+      {/* neck */}
+      <path d="M72 82 L72 99 M88 82 L88 99" stroke={ink} strokeWidth={2.5} strokeLinecap="round" />
+      {/* head, turned a little up and to the right */}
+      <circle cx="80" cy="58" r="27" fill="#fff" stroke={ink} strokeWidth={2.5} />
+      <path d="M54 52 C 56 30, 76 24, 92 30 C 102 34, 107 42, 107 52 C 98 42, 84 38, 70 42 C 63 44, 58 48, 54 52 Z" fill={ink} />
+      {/* eyes up, brows knotted */}
+      <circle cx="74" cy="56" r="2.4" fill={ink} />
+      <circle cx="91" cy="55" r="2.4" fill={ink} />
+      <path d="M68 50 L78 48.5 M87 47.5 L96 50" stroke={ink} strokeWidth={2} strokeLinecap="round" />
+      {/* a flat, unsure mouth */}
+      <path d="M77 70 Q 82 68.5, 87 70.5" fill="none" stroke={ink} strokeWidth={2} strokeLinecap="round" />
+      {/* forearm up in front of the chest, fist under the chin */}
+      <path d="M98 150 C 96 130, 90 108, 86 92 L 102 88 C 108 106, 116 128, 124 150 Z" fill="#fff" stroke={ink} strokeWidth={2.5} strokeLinejoin="round" />
+      <ellipse cx="94" cy="86" rx="11" ry="8.5" fill="#fff" stroke={ink} strokeWidth={2.5} transform="rotate(-15 94 86)" />
+      <path d="M86 84 Q 94 81, 102 84" fill="none" stroke={ink} strokeWidth={1.8} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** The questions, each in its own bubble, rising off the figure. */
+function GuessingBubbles() {
+  return (
+    <div className="hiw-think">
+      <ul className="hiw-bubbles" aria-label="The questions you start asking">
+        {GUESSES.map((g, i) => (
+          <li
+            key={g}
+            className="hiw-bubble"
+            style={{
+              '--tilt': `${(i % 2 === 0 ? -1 : 1) * (1 + (i % 3) * 0.75)}deg`,
+              '--lift': `${BUBBLE_LIFT[i]}px`,
+              '--delay': `${i * -0.9}s`,
+              borderRadius: BUBBLE_SHAPE[i % BUBBLE_SHAPE.length],
+            } as React.CSSProperties}
+          >
+            {g}
+          </li>
+        ))}
+      </ul>
+      <div className="hiw-trail" aria-hidden><span /><span /><span /></div>
+      <ThinkingFigure />
     </div>
   );
 }
+
+const BUBBLE_LIFT = [0, 10, -6, 8, -4, 6];
+
+/* Uneven radii, so each bubble is a soft blob rather than another pill. */
+const BUBBLE_SHAPE = [
+  '30px 26px 32px 24px / 26px 30px 24px 32px',
+  '24px 32px 26px 30px / 30px 24px 32px 26px',
+  '28px 28px 22px 32px / 24px 32px 28px 26px',
+];
 
 /**
  * The seven-step list as a loose map instead of a stacked ledger.
@@ -227,23 +268,58 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
         .hiw-flow::-webkit-scrollbar { display: none; }
         .hiw-start:hover { background: ${colors.accentPetrolHover} !important; }
 
-        .hiw-rail { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
-        .hiw-rail-text { max-width: ${READ}px; }
-        .hiw-rail-images {
-          display: flex; flex-direction: row; gap: 12px; overflow-x: auto;
-          padding-bottom: 6px; scrollbar-width: none;
+        /* The timeline. Each stop draws the connector to the next from its own
+           dot's centre (half a column to the right, one column wide); the last
+           one runs half a column into nothing and fades out. */
+        .hiw-tl { display: grid; grid-template-columns: repeat(4, 1fr); list-style: none; margin: 30px 0 34px; padding: 0; }
+        .hiw-tl-stop { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 0 4px; }
+        .hiw-tl-stop::after {
+          content: ''; position: absolute; top: calc(18px + 10px + 23px); left: 50%; width: 100%; height: 2px;
+          background: ${colors.borderDefined}; z-index: 0;
         }
-        .hiw-rail-images::-webkit-scrollbar { display: none; }
-        .hiw-rail-card {
-          flex: 0 0 auto; width: 150px; border-radius: 10px; overflow: hidden;
-          border: 1px solid ${colors.borderDefined}; background: #fff;
-          box-shadow: 0 1px 2px rgba(16, 24, 40,0.05), 0 8px 18px -14px rgba(16, 24, 40,0.35);
+        .hiw-tl-stop.is-last::after {
+          width: 50%; background: repeating-linear-gradient(to right, ${colors.borderDefined} 0 5px, transparent 5px 11px);
+          -webkit-mask-image: linear-gradient(to right, black, transparent); mask-image: linear-gradient(to right, black, transparent);
         }
-        @media (min-width: 860px) {
-          .hiw-rail { grid-template-columns: 1fr 240px; gap: 36px; }
-          .hiw-rail-images { flex-direction: column; overflow-x: visible; position: sticky; top: 28px; }
-          .hiw-rail-card { width: 100%; }
+        .hiw-tl-when {
+          height: 18px; font-family: ${T.body}; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+          text-transform: uppercase; color: ${colors.textMuted}; white-space: nowrap;
         }
+        .hiw-tl-dot {
+          position: relative; z-index: 1; width: 46px; height: 46px; border-radius: 99px; display: grid; place-items: center;
+          background: #fff; border: 2px solid ${colors.textPrimary}; color: ${colors.textPrimary};
+        }
+        .hiw-tl-stop:nth-child(3) .hiw-tl-dot { border-color: ${colors.accentGold}; color: ${colors.accentGold}; background: ${colors.accentGoldSoft}; }
+        .hiw-tl-stop.is-last .hiw-tl-dot { border-style: dashed; border-color: ${colors.textMuted}; color: ${colors.textMuted}; }
+        .hiw-tl-t {
+          font-family: ${T.display}; font-weight: 600; font-size: clamp(14px, 2.6vw, 19px); line-height: 1.25;
+          color: ${colors.textPrimary}; text-wrap: balance;
+        }
+        .hiw-tl-stop.is-last .hiw-tl-t { color: ${colors.textSecondary}; }
+
+        /* The thinker. Bubbles float above, a trail of shrinking dots runs down
+           to the head, the figure sits at the bottom, centred. */
+        .hiw-think { display: flex; flex-direction: column; align-items: center; margin: 22px 0 30px; }
+        .hiw-bubbles { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px 12px; list-style: none; margin: 0; padding: 0; max-width: 620px; }
+        .hiw-bubble {
+          background: #fff; border: 1.5px solid ${colors.borderDefined}; padding: 12px 20px;
+          font-family: ${T.display}; font-weight: 600; font-size: clamp(15px, 2.4vw, 18px); line-height: 1.3; color: ${colors.textPrimary};
+          box-shadow: 0 1px 2px rgba(16, 24, 40,0.04), 0 10px 22px -16px rgba(16, 24, 40,0.35);
+          transform: translateY(var(--lift)) rotate(var(--tilt));
+          animation: hiw-bob 5.4s ease-in-out var(--delay) infinite alternate;
+        }
+        @keyframes hiw-bob {
+          from { transform: translateY(var(--lift)) rotate(var(--tilt)); }
+          to { transform: translateY(calc(var(--lift) - 6px)) rotate(calc(var(--tilt) * -0.5)); }
+        }
+        .hiw-trail { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 18px 0 4px; }
+        .hiw-trail span { display: block; border-radius: 99px; background: #fff; border: 1.5px solid ${colors.borderDefined}; }
+        .hiw-trail span:nth-child(1) { width: 16px; height: 16px; transform: translateX(14px); }
+        .hiw-trail span:nth-child(2) { width: 11px; height: 11px; transform: translateX(22px); }
+        .hiw-trail span:nth-child(3) { width: 7px; height: 7px; transform: translateX(26px); }
+        /* Stacked one or two to a row on a phone, the lifts only make the gaps uneven. */
+        @media (max-width: 560px) { .hiw-bubbles { gap: 14px 10px; } .hiw-bubble { --lift: 0px !important; } }
+        @media (prefers-reduced-motion: reduce) { .hiw-bubble { animation: none; } }
 
         .hiw-map { position: relative; padding: 30px 4px 36px; }
         .hiw-map-cards { display: flex; flex-wrap: wrap; gap: 26px 20px; position: relative; z-index: 1; }
@@ -275,16 +351,25 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
         </h2>
       </div>
 
-      <div className="hiw-rail" style={{ maxWidth: 900, margin: '0 auto' }}>
-        <div className="hiw-rail-text">
-          <p style={prose}>Getting your first job in Australia as a migrant can feel like a black box.</p>
-          <Lines>{['You apply.', 'You wait.', 'You get a generic rejection.', 'Or worse, you hear nothing.']}</Lines>
+      <div style={{ maxWidth: READ, margin: '0 auto' }}>
+        <p style={prose}>
+          Applying for your first job in Australia as a migrant feels like shouting into an empty room.
+        </p>
+        <p style={prose}>
+          You keep showing up, keep putting yourself out there, keep sending applications into the world.
+          Somewhere, you know there's someone who needs what you have to offer. But the absence of
+          feedback is one of the most soul-crushing experiences you will have in your life.
+        </p>
+        <SilenceTimeline />
 
-          <p style={prose}>Then you start guessing.</p>
-          <Lines style={{ fontWeight: 500 }}>{['Did my resume pass the ATS?', 'Was I qualified?', 'Was my English good enough?', 'Was it my nationality?', 'My accent?', 'My lack of Australian experience?']}</Lines>
-          <Lines style={{ color: colors.accentPetrol }}>{['Maybe.', "But you usually don't know.", "And that's the problem."]}</Lines>
-        </div>
-        <TestimonialRail items={PAIN_RAIL} />
+        <p style={prose}>Then you start guessing.</p>
+        <GuessingBubbles />
+
+        <Lines style={{ color: colors.accentPetrol }}>{['Maybe.']}</Lines>
+        <p style={{ ...line, color: colors.accentPetrol, lineHeight: 1.35 }}>
+          The reality is, different jobs rejected you for different reasons. And solving for the reason
+          Job A rejected you doesn't fix your resume for Job B.
+        </p>
       </div>
 
       <div style={section}>
@@ -298,7 +383,11 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
         <p style={prose}>That means even a genuinely strong candidate can miss out.</p>
         <p style={{ ...prose, marginTop: 26 }}>So the answer isn't simply:</p>
         <p style={{ ...line, fontSize: 'clamp(24px, 4vw, 30px)' }}>"Apply harder."</p>
-        <p style={{ ...line, color: colors.accentPetrol }}>It's to build a better system.</p>
+        <p style={line}>You're already doing that.</p>
+        <p style={{ ...line, color: colors.accentPetrol, lineHeight: 1.35, marginTop: 18 }}>
+          It's to build a better system that helps you send out high-quality applications and outreach,
+          consistently.
+        </p>
       </div>
 
       <div style={section}>
@@ -352,21 +441,16 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
         </p>
       </div>
 
-      <div style={{ ...section, maxWidth: 900 }}>
-        <div className="hiw-rail">
-          <div className="hiw-rail-text">
-            <h3 style={h2}>The point isn't to apply to everything.</h3>
-            <p style={prose}>
-              It's to make more high-quality attempts, in less time, while systematically increasing the
-              number of people who know you're interested.
-            </p>
-            <p style={prose}>
-              Use your saved time to build projects, improve your skills, meet people, or actually enjoy
-              living in Australia.
-            </p>
-          </div>
-          <TestimonialRail items={WIN_RAIL} />
-        </div>
+      <div style={section}>
+        <h3 style={h2}>The point isn't to apply to everything.</h3>
+        <p style={prose}>
+          It's to make more high-quality attempts, in less time, while systematically increasing the
+          number of people who know you're interested.
+        </p>
+        <p style={prose}>
+          Use your saved time to build projects, improve your skills, meet people, or actually enjoy
+          living in Australia.
+        </p>
       </div>
 
       <div style={{ maxWidth: READ, margin: '0 auto' }}>
